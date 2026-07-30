@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useRouter } from "@/lib/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
@@ -49,7 +49,8 @@ export default function AuthPage() {
     }
   }
 
-  const isRtl = document.dir === "rtl"
+  const locale = useLocale()
+  const isRtl = locale === "ar"
 
   return (
     <>

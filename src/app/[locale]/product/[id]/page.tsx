@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Link } from "@/lib/i18n/navigation"
@@ -25,7 +25,8 @@ export default function ProductPage() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" })
   const [submittingReview, setSubmittingReview] = useState(false)
   const addItem = useCartStore((s) => s.addItem)
-  const isRtl = document.dir === "rtl"
+  const locale = useLocale()
+  const isRtl = locale === "ar"
 
   useEffect(() => {
     const supabase = createClient()

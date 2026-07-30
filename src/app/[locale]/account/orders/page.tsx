@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useRouter } from "@/lib/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Link } from "@/lib/i18n/navigation"
@@ -20,7 +20,8 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const isRtl = document.dir === "rtl"
+  const locale = useLocale()
+  const isRtl = locale === "ar"
   const router = useRouter()
 
   useEffect(() => {

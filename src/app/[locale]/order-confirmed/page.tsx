@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link } from "@/lib/i18n/navigation"
 import Header from "@/components/layout/Header"
 import { CheckCircle, Package, ShoppingBag } from "lucide-react"
@@ -10,7 +10,8 @@ export default function OrderConfirmedPage() {
   const t = useTranslations("checkout")
   const searchParams = useSearchParams()
   const orderId = searchParams.get("id")
-  const isRtl = document.dir === "rtl"
+  const locale = useLocale()
+  const isRtl = locale === "ar"
 
   return (
     <>

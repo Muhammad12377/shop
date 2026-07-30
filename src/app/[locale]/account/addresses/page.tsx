@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import { MapPin, Plus, Edit2, Trash2, Star, X } from "lucide-react"
@@ -23,7 +23,8 @@ export default function AddressesPage() {
     city: "",
     is_default: false,
   })
-  const isRtl = document.dir === "rtl"
+  const locale = useLocale()
+  const isRtl = locale === "ar"
 
   const fetchAddresses = async () => {
     const supabase = createClient()

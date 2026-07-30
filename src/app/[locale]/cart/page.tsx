@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import Header from "@/components/layout/Header"
@@ -12,7 +12,8 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, total } = useCartStore()
   const [couponCode, setCouponCode] = useState("")
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
-  const isRtl = document.dir === "rtl"
+  const locale = useLocale()
+  const isRtl = locale === "ar"
 
   const subtotal = total()
   const shipping = subtotal >= 100 ? 0 : 5
