@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { ShoppingCart, Menu, X, Search, User, Package, LogOut } from "lucide-react"
+import { ShoppingCart, Menu, X, Search, User, Package, Heart, ChevronDown, LogOut } from "lucide-react"
 import { Link, usePathname, useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
@@ -16,11 +16,23 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const cartCount = useCartStore((s) => s.items.reduce((a, b) => a + b.quantity, 0))
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUser(data.user)
+        supabase
+          .from("profiles")
+          .select("full_name, avatar_url")
+          .eq("id", data.user.id)
+          .single()
+          .then(({ data: prof }) => setProfile(prof))
+      }
+    })
   }, [])
 
   const handleSearch = (e: React.FormEvent) => {
@@ -35,9 +47,12 @@ export default function Header() {
     const supabase = createClient()
     await supabase.auth.signOut()
     setUser(null)
+    setProfile(null)
     router.push("/")
     router.refresh()
   }
+
+  const isRtl = locale === "ar"
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-zinc-200">
@@ -58,7 +73,7 @@ export default function Header() {
               {t("products")}
             </Link>
             {user && (
-              <Link href="/orders" className="text-sm font-medium hover:text-accent transition-colors">
+              <Link href="/account/orders" className="text-sm font-medium hover:text-accent transition-colors">
                 {t("orders")}
               </Link>
             )}
@@ -84,6 +99,12 @@ export default function Header() {
               {locale === "en" ? "AR" : "EN"}
             </Link>
 
+            {user && (
+              <Link href="/account/wishlist" className="relative p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                <Heart className="w-5 h-5" />
+              </Link>
+            )}
+
             <Link href="/cart" className="relative p-2 hover:bg-zinc-100 rounded-full transition-colors">
               <ShoppingCart className="w-5 h-5" />
               {cartCount > 0 && (
@@ -94,13 +115,58 @@ export default function Header() {
             </Link>
 
             {user ? (
-              <div className="flex items-center gap-2">
-                <Link href="/orders" className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                  <Package className="w-5 h-5" />
-                </Link>
-                <button onClick={handleLogout} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                  <LogOut className="w-5 h-5" />
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-zinc-100 transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center">
+                    <User className="w-4 h-4 text-accent" />
+                  </div>
+                  <span className="text-sm font-medium max-w-[100px] truncate">
+                    {profile?.full_name || user.email?.split("@")[0] || ""}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
                 </button>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
+                    <div className={`absolute ${isRtl ? "left-0" : "right-0"} top-full mt-2 w-56 bg-white rounded-2xl border border-zinc-100 shadow-lg py-2 z-20`}>
+                      <Link
+                        href="/account"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-zinc-50 transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <User className="w-4 h-4 text-zinc-400" />
+                        {t("account")}
+                      </Link>
+                      <Link
+                        href="/account/orders"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-zinc-50 transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Package className="w-4 h-4 text-zinc-400" />
+                        {t("orders")}
+                      </Link>
+                      <Link
+                        href="/account/wishlist"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-zinc-50 transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Heart className="w-4 h-4 text-zinc-400" />
+                        {t("wishlist")}
+                      </Link>
+                      <hr className="border-zinc-100 my-2" />
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors w-full text-left"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        {t("logout")}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <Link
@@ -144,9 +210,17 @@ export default function Header() {
                 {t("cart")} ({cartCount})
               </Link>
               {user && (
-                <Link href="/orders" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                  {t("orders")}
-                </Link>
+                <>
+                  <Link href="/account" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
+                    {t("account")}
+                  </Link>
+                  <Link href="/account/orders" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
+                    {t("orders")}
+                  </Link>
+                  <Link href="/account/wishlist" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
+                    {t("wishlist")}
+                  </Link>
+                </>
               )}
               <hr className="border-zinc-100 my-2" />
               <Link href="/" locale={locale === "en" ? "ar" : "en"} className="py-2 text-sm font-medium text-left" onClick={() => setMenuOpen(false)}>

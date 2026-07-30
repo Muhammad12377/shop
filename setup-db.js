@@ -1,16 +1,6 @@
 const { Client } = require("pg")
 const fs = require("fs")
 const path = require("path")
-const dns = require("dns")
-
-async function resolveHost(host) {
-  return new Promise((resolve, reject) => {
-    dns.resolve6(host, (err, addresses) => {
-      if (err) reject(err)
-      else resolve(addresses[0])
-    })
-  })
-}
 
 async function tryConnect(config, label) {
   const client = new Client(config)
@@ -25,87 +15,167 @@ async function tryConnect(config, label) {
   }
 }
 
+function splitSQL(sql) {
+  const statements = []
+  let current = ""
+  let inDollar = false
+  let dollarTag = ""
+  let inString = false
+  let stringChar = ""
+
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i]
+    const next = sql[i + 1] || ""
+
+    if (inDollar) {
+      current += ch
+      // Check for end of dollar quote: $tag$
+      if (ch === "$") {
+        // Look backwards to find if this is the closing $tag$
+        const possibleTag = current.slice(current.length - dollarTag.length - 1, -1)
+        if (possibleTag === dollarTag) {
+          inDollar = false
+          dollarTag = ""
+        }
+      }
+    } else if (inString) {
+      current += ch
+      if (ch === "\\" && next) {
+        current += next
+        i++
+      } else if (ch === stringChar) {
+        inString = false
+      }
+    } else if (ch === "'") {
+      current += ch
+      inString = true
+      stringChar = ch
+    } else if (ch === "$" && next === "$") {
+      current += ch + next
+      i++
+      inDollar = true
+      dollarTag = ""
+    } else if (ch === "$" && /[a-zA-Z_]/.test(next)) {
+      // Start of dollar-quoted string with tag: $tag$
+      const tagStart = i + 1
+      let j = tagStart
+      while (j < sql.length && /[a-zA-Z0-9_]/.test(sql[j])) j++
+      if (sql[j] === "$") {
+        dollarTag = sql.slice(tagStart, j)
+        current += ch + sql.slice(tagStart, j + 1)
+        i = j
+        inDollar = true
+      } else {
+        current += ch
+      }
+    } else if (ch === ";" && !inDollar && !inString) {
+      const trimmed = current.trim()
+      if (trimmed && !trimmed.startsWith("--")) {
+        statements.push(trimmed + ";")
+      }
+      current = ""
+    } else if (ch === "-" && next === "-") {
+      // Comment - skip to end of line
+      while (i < sql.length && sql[i] !== "\n") i++
+      current += "\n"
+    } else {
+      current += ch
+    }
+  }
+
+  const trimmed = current.trim()
+  if (trimmed && !trimmed.startsWith("--")) {
+    statements.push(trimmed + ";")
+  }
+
+  return statements
+    .map((s) => s.trim())
+    .filter((s) => s.length > 1 && s !== ";")
+}
+
 async function setupDatabase() {
   const projectRef = "abuhwixkskepdpqtsdsg"
   const password = process.env.DB_PASSWORD || ""
+  const sqlFile = process.argv[2] || "migration.sql"
+  const sqlPath = path.join(__dirname, "supabase", sqlFile)
 
   console.log("=".repeat(50))
   console.log("Sneakers Club Syria - Database Setup")
   console.log("=".repeat(50))
 
+  if (!fs.existsSync(sqlPath)) {
+    console.error(`SQL file not found: ${sqlPath}`)
+    process.exit(1)
+  }
+
+  const client = new Client({
+    host: "aws-0-ap-southeast-1.pooler.supabase.com",
+    port: 6543,
+    database: "postgres",
+    user: `postgres.${projectRef}`,
+    password,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10000,
+  })
+
   try {
-    console.log("Attempting to connect via Supabase Pooler...\n")
+    await client.connect()
+    console.log("Connected via pooler\n")
 
-    const attempts = [
-      {
-        config: {
-          host: "aws-0-ap-southeast-1.pooler.supabase.com",
-          port: 6543,
-          database: "postgres",
-          user: `postgres.${projectRef}`,
-          password,
-          ssl: { rejectUnauthorized: false },
-          connectionTimeoutMillis: 10000,
-        },
-        label: "pooler (aws-0-ap-southeast-1.pooler.supabase.com:6543)",
-      },
-      {
-        config: {
-          host: `db.${projectRef}.supabase.co`,
-          port: 5432,
-          database: "postgres",
-          user: "postgres",
-          password,
-          ssl: { rejectUnauthorized: false },
-          connectionTimeoutMillis: 5000,
-        },
-        label: "direct (db.<ref>.supabase.co:5432)",
-      },
-    ]
-
-    let client = null
-    for (const attempt of attempts) {
-      client = await tryConnect(attempt.config, attempt.label)
-      if (client) break
-    }
-
-    if (!client) {
-      throw new Error("All connection attempts failed")
-    }
-
-    console.log("\nConnected successfully!")
-
-    const sqlPath = path.join(__dirname, "supabase", "migration.sql")
     const sql = fs.readFileSync(sqlPath, "utf-8")
+    const statements = splitSQL(sql)
 
-    console.log("Executing migration SQL...")
-    await client.query(sql)
-    console.log("Migration completed successfully!")
+    console.log(`Found ${statements.length} SQL statements\n`)
 
-    const { rows: tables } = await client.query(`
-      SELECT table_name FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      ORDER BY table_name
-    `)
-    console.log("\nCreated tables:", tables.map((t) => t.table_name).join(", "))
+    let ok = 0,
+      skip = 0,
+      fail = 0
 
-    const { rows: categories } = await client.query("SELECT name_en, name_ar FROM categories")
-    console.log("\nCategories:", categories.map((c) => `${c.name_en} (${c.name_ar})`).join(", "))
+    for (let i = 0; i < statements.length; i++) {
+      const stmt = statements[i]
+      const preview = stmt.split("\n")[0].slice(0, 70).trim()
 
-    const { rows: products } = await client.query("SELECT name_en, price FROM products")
-    console.log("Products:", products.map((p) => `${p.name_en} ($${p.price})`).join(", "))
+      process.stdout.write(`  [${i + 1}/${statements.length}] ${preview}...`)
 
+      try {
+        await client.query(stmt)
+        console.log(" OK")
+        ok++
+      } catch (e) {
+        const msg = e.message
+        if (
+          msg.includes("already exists") ||
+          msg.includes("duplicate key") ||
+          msg.includes("duplicate") ||
+          msg.includes("does not exist") ||
+          msg.includes("not have") ||
+          msg.includes("cannot be")
+        ) {
+          console.log(` SKIP (${msg.split("\n")[0].slice(0, 50)})`)
+          skip++
+        } else {
+          console.log(` FAIL`)
+          console.error(`    ${msg.split("\n")[0]}`)
+          fail++
+        }
+      }
+    }
+
+    console.log(`\nResults: ${ok} OK, ${skip} SKIP, ${fail} FAIL`)
+
+    // Verify tables
+    const { rows: tables } = await client.query(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`
+    )
+    console.log("\nTables:", tables.map((t) => t.table_name).join(", "))
+
+    await client.end()
     console.log("\n✓ Database setup complete!")
+    process.exit(fail > 0 ? 1 : 0)
   } catch (err) {
     console.error("\n✗ Setup failed:", err.message)
-    if (err.message.includes("password")) {
-      console.log("\n! Need the database password.")
-      console.log("  Get it from: https://supabase.com/dashboard/project/" + projectRef + "/settings/database")
-      console.log("  Then run: set DB_PASSWORD=your_password && node setup-db.js")
-    }
+    await client.end().catch(() => {})
     process.exit(1)
-  } finally {
-    // Cleanup handled in each attempt
   }
 }
 

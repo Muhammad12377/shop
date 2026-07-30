@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
-import { CreditCard, MapPin, Phone, User, FileText } from "lucide-react"
+import { CreditCard, MapPin, Phone, User, FileText, Ticket, Plus, X } from "lucide-react"
+import type { Address, Coupon } from "@/types"
 
 export default function CheckoutPage() {
   const t = useTranslations("checkout")
@@ -15,6 +16,13 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, total, clearCart } = useCartStore()
   const [loading, setLoading] = useState(false)
+  const [addresses, setAddresses] = useState<Address[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("")
+  const [showNewAddress, setShowNewAddress] = useState(false)
+  const [couponCode, setCouponCode] = useState("")
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
+  const [discount, setDiscount] = useState(0)
+  const [validatingCoupon, setValidatingCoupon] = useState(false)
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -22,11 +30,86 @@ export default function CheckoutPage() {
     city: "",
     notes: "",
   })
+  const [settings, setSettings] = useState<any>(null)
   const isRtl = document.dir === "rtl"
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase
+          .from("addresses")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("is_default", { ascending: false })
+          .then(({ data }) => {
+            if (data && data.length > 0) {
+              setAddresses(data)
+              const defaultAddr = data.find((a) => a.is_default) || data[0]
+              setSelectedAddressId(defaultAddr.id)
+              setForm({
+                full_name: defaultAddr.full_name,
+                phone: defaultAddr.phone,
+                address: defaultAddr.address,
+                city: defaultAddr.city,
+                notes: "",
+              })
+            }
+          })
+      }
+    })
+    supabase.from("settings").select("*").single().then(({ data }) => setSettings(data))
+  }, [])
 
   if (items.length === 0) {
     router.push("/cart")
     return null
+  }
+
+  const subtotal = total()
+  const shippingFee =
+    settings && subtotal >= (settings.free_shipping_min || 100)
+      ? 0
+      : settings?.shipping_fee || 5
+  const grandTotal = subtotal + shippingFee - discount
+
+  const selectAddress = (addr: Address) => {
+    setSelectedAddressId(addr.id)
+    setForm({
+      full_name: addr.full_name,
+      phone: addr.phone,
+      address: addr.address,
+      city: addr.city,
+      notes: form.notes,
+    })
+  }
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return
+    setValidatingCoupon(true)
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode.trim(), order_total: subtotal }),
+      })
+      const result = await res.json()
+      if (!result.success) {
+        toast.error(result.error || ct("invalid_coupon"))
+        setValidatingCoupon(false)
+        return
+      }
+      setAppliedCoupon(result.data)
+      if (result.data.discount_type === "percentage") {
+        setDiscount((subtotal * result.data.discount_value) / 100)
+      } else {
+        setDiscount(result.data.discount_value)
+      }
+      toast.success(ct("coupon_applied"))
+    } catch {
+      toast.error(ct("invalid_coupon"))
+    }
+    setValidatingCoupon(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,7 +120,7 @@ export default function CheckoutPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        toast.error("Please login first")
+        toast.error(t("login_required"))
         router.push("/auth")
         return
       }
@@ -49,25 +132,47 @@ export default function CheckoutPage() {
         quantity: item.quantity,
         size: item.size,
         color: item.color,
+        image: item.image,
       }))
 
-      const { error } = await supabase.from("orders").insert({
-        user_id: user.id,
-        status: "pending",
-        total: total(),
-        full_name: form.full_name,
-        phone: form.phone,
-        address: form.address,
-        city: form.city,
-        notes: form.notes,
-        items: orderItems,
-      })
+      const { data: order, error } = await supabase
+        .from("orders")
+        .insert({
+          user_id: user.id,
+          status: "pending",
+          subtotal,
+          shipping_fee: shippingFee,
+          discount,
+          coupon_code: appliedCoupon?.code || null,
+          total: grandTotal,
+          full_name: form.full_name,
+          phone: form.phone,
+          address: form.address,
+          city: form.city,
+          notes: form.notes,
+          items: orderItems,
+        })
+        .select()
+        .single()
 
       if (error) throw error
 
+      if (appliedCoupon) {
+        await supabase
+          .from("coupons")
+          .update({ used_count: (appliedCoupon.used_count || 0) + 1 })
+          .eq("id", appliedCoupon.id)
+      }
+
+      await supabase.from("order_status_history").insert({
+        order_id: order.id,
+        status: "pending",
+        note: "Order placed",
+      })
+
       clearCart()
-      toast.success("Order placed successfully!")
-      router.push("/orders")
+      toast.success(t("order_confirmed"))
+      router.push(`/order-confirmed?id=${order.id}`)
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -87,10 +192,52 @@ export default function CheckoutPage() {
 
         <div className="grid md:grid-cols-5 gap-8">
           <form onSubmit={handleSubmit} className="md:col-span-3 space-y-6">
+            {addresses.length > 0 && (
+              <div className="bg-white rounded-2xl border border-zinc-100 p-6">
+                <h2 className="font-semibold mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-accent" />
+                  {t("saved_addresses")}
+                </h2>
+                <div className="space-y-2">
+                  {addresses.map((addr) => (
+                    <label
+                      key={addr.id}
+                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                        selectedAddressId === addr.id
+                          ? "border-accent bg-accent/5"
+                          : "border-zinc-200 hover:border-zinc-300"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="address"
+                        checked={selectedAddressId === addr.id}
+                        onChange={() => selectAddress(addr)}
+                        className="mt-0.5 accent-accent"
+                      />
+                      <div className="text-sm">
+                        <p className="font-medium">{addr.label}</p>
+                        <p className="text-zinc-500">{addr.full_name} - {addr.phone}</p>
+                        <p className="text-zinc-400">{addr.address}, {addr.city}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewAddress(!showNewAddress)}
+                  className="mt-3 text-sm text-accent hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  {t("add_new_address")}
+                </button>
+              </div>
+            )}
+
             <div className="bg-white rounded-2xl border border-zinc-100 p-6">
               <h2 className="font-semibold mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-accent" />
-                {t("shipping_info")}
+                {showNewAddress || addresses.length === 0 ? t("shipping_info") : t("or_enter_new")}
               </h2>
               <div className="space-y-4">
                 <div>
@@ -154,6 +301,46 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            <div className="bg-white rounded-2xl border border-zinc-100 p-6">
+              <h2 className="font-semibold mb-4 flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-accent" />
+                {ct("coupon_code")}
+              </h2>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder={isRtl ? "أدخل كود الخصم" : "Enter coupon code"}
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                  disabled={!!appliedCoupon}
+                />
+                {appliedCoupon ? (
+                  <button
+                    type="button"
+                    onClick={() => { setAppliedCoupon(null); setDiscount(0); setCouponCode("") }}
+                    className="px-4 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm hover:bg-red-50 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={validatingCoupon || !couponCode.trim()}
+                    className="px-6 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
+                  >
+                    {validatingCoupon ? "..." : ct("apply_coupon")}
+                  </button>
+                )}
+              </div>
+              {appliedCoupon && (
+                <p className="text-sm text-green-600 mt-2">
+                  {ct("coupon_applied")} ({appliedCoupon.code})
+                </p>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -169,28 +356,63 @@ export default function CheckoutPage() {
               <div className="space-y-3 mb-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-zinc-100 shrink-0" />
+                    <div className="w-12 h-12 rounded-lg bg-zinc-100 shrink-0 overflow-hidden">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="w-full h-full object-cover" />
+                      ) : null}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
                         {isRtl ? item.name_ar : item.name_en}
                       </p>
-                      <p className="text-xs text-zinc-400">{item.size} / {item.color} x{item.quantity}</p>
-                      <p className="text-sm font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-xs text-zinc-400">
+                        {item.size} / {item.color} x{item.quantity}
+                      </p>
+                      <p className="text-sm font-medium">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-zinc-100 pt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-semibold">{ct("total")}</span>
-                  <span className="text-xl font-bold text-accent">${total().toFixed(2)}</span>
+              <div className="border-t border-zinc-100 pt-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">{ct("subtotal")}</span>
+                  <span>${subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
-                  <CreditCard className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-green-800">{t("cod")}</p>
-                    <p className="text-xs text-green-600">{t("cod_desc")}</p>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">{ct("shipping")}</span>
+                  <span>
+                    {shippingFee === 0 ? (
+                      <span className="text-green-600">{ct("free_shipping")}</span>
+                    ) : (
+                      `$${shippingFee.toFixed(2)}`
+                    )}
+                  </span>
+                </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>{ct("discount")}</span>
+                    <span>-${discount.toFixed(2)}</span>
                   </div>
+                )}
+                {shippingFee > 0 && settings && (
+                  <p className="text-xs text-zinc-400">
+                    {ct("free_shipping_note")}
+                  </p>
+                )}
+                <div className="border-t border-zinc-100 pt-2 flex justify-between font-semibold">
+                  <span>{ct("total")}</span>
+                  <span className="text-xl font-bold text-accent">
+                    ${grandTotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl mt-4">
+                <CreditCard className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">{t("cod")}</p>
+                  <p className="text-xs text-green-600">{t("cod_desc")}</p>
                 </div>
               </div>
             </div>

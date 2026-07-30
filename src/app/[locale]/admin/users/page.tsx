@@ -1,59 +1,130 @@
-import { getTranslations } from "next-intl/server"
-import { createServerSupabase } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
-import Link from "next/link"
+"use client"
 
-type Props = { params: Promise<{ locale: string }> }
+import { useEffect, useState, useCallback } from "react"
+import { Shield, ShieldOff, Loader2 } from "lucide-react"
+import toast from "react-hot-toast"
+import type { UserProfile } from "@/types"
 
-export default async function AdminUsersPage({ params }: Props) {
-  const { locale } = await params
-  const t = await getTranslations({ locale, namespace: "admin" })
+export default function AdminUsersPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
+  const [locale, setLocale] = useState("en")
+  const [users, setUsers] = useState<UserProfile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+
+  useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
 
-  const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/auth")
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/users")
+      const data = await res.json()
+      if (Array.isArray(data)) setUsers(data)
+    } catch {
+      toast.error(isRtl ? "خطأ في تحميل المستخدمين" : "Failed to load users")
+    } finally {
+      setLoading(false)
+    }
+  }, [isRtl])
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== "admin") redirect("/")
+  useEffect(() => { fetchUsers() }, [fetchUsers])
 
-  const { data: users } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+  const toggleRole = async (user: UserProfile) => {
+    setTogglingId(user.id)
+    const newRole = user.role === "admin" ? "user" : "admin"
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: newRole as "admin" | "user" } : u)))
+      toast.success(
+        newRole === "admin"
+          ? isRtl ? "تم تعيينه كمدير" : "Promoted to admin"
+          : isRtl ? "تم إزالة صلاحية المدير" : "Admin role removed"
+      )
+    } catch (err: any) {
+      toast.error(err.message || (isRtl ? "خطأ" : "Error"))
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-8 h-8 border-4 border-[#f97316] border-t-transparent rounded-full" />
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <AdminHeader locale={locale} />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-8">{t("users")}</h1>
+    <div>
+      <h1 className="text-2xl font-bold mb-6">{isRtl ? "المستخدمين" : "Users"}</h1>
 
-        <div className="bg-white rounded-2xl border border-zinc-100 overflow-hidden">
+      <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الاسم" : "Name"}</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">Email</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الدور" : "Role"}</th>
-                <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "التاريخ" : "Date"}</th>
+                <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "تاريخ التسجيل" : "Date Joined"}</th>
+                <th className="text-right px-4 py-3 font-medium text-zinc-500">{isRtl ? "الإجراءات" : "Actions"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {(!users || users.length === 0) ? (
+              {users.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-zinc-400">
+                  <td colSpan={5} className="px-4 py-12 text-center text-zinc-400">
                     {isRtl ? "لا توجد نتائج" : "No results"}
                   </td>
                 </tr>
               ) : (
-                users.map((u: any) => (
+                users.map((u) => (
                   <tr key={u.id} className="hover:bg-zinc-50">
                     <td className="px-4 py-3 font-medium">{u.full_name || "-"}</td>
                     <td className="px-4 py-3 text-zinc-500">{u.email}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.role === "admin" ? "bg-accent/10 text-accent" : "bg-zinc-100 text-zinc-600"}`}>
-                        {u.role === "admin" ? (isRtl ? "مدير" : "Admin") : (isRtl ? "مستخدم" : "User")}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          u.role === "admin"
+                            ? "bg-[#f97316]/10 text-[#f97316]"
+                            : "bg-zinc-100 text-zinc-600"
+                        }`}
+                      >
+                        {u.role === "admin"
+                          ? isRtl ? "مدير" : "Admin"
+                          : isRtl ? "مستخدم" : "User"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-zinc-500">
                       {new Date(u.created_at).toLocaleDateString(isRtl ? "ar" : "en-US")}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => toggleRole(u)}
+                        disabled={togglingId === u.id}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          u.role === "admin"
+                            ? "bg-red-50 text-red-600 hover:bg-red-100"
+                            : "bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20"
+                        } disabled:opacity-50`}
+                      >
+                        {togglingId === u.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : u.role === "admin" ? (
+                          <ShieldOff className="w-3 h-3" />
+                        ) : (
+                          <Shield className="w-3 h-3" />
+                        )}
+                        {u.role === "admin"
+                          ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
+                          : isRtl ? "تعيين مدير" : "Make Admin"}
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -63,34 +134,5 @@ export default async function AdminUsersPage({ params }: Props) {
         </div>
       </div>
     </div>
-  )
-}
-
-function AdminHeader({ locale }: { locale: string }) {
-  return (
-    <header className="bg-primary text-white">
-      <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/admin" className="font-bold">
-          SNEAKERS <span className="text-accent">CLUB</span>
-        </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/admin" className="hover:text-accent transition-colors">
-            {locale === "ar" ? "لوحة التحكم" : "Dashboard"}
-          </Link>
-          <Link href="/admin/products" className="hover:text-accent transition-colors">
-            {locale === "ar" ? "المنتجات" : "Products"}
-          </Link>
-          <Link href="/admin/orders" className="hover:text-accent transition-colors">
-            {locale === "ar" ? "الطلبات" : "Orders"}
-          </Link>
-          <Link href="/admin/users" className="text-accent font-medium">
-            {locale === "ar" ? "المستخدمين" : "Users"}
-          </Link>
-          <Link href={`/${locale}`} className="text-zinc-400 hover:text-white transition-colors">
-            {locale === "ar" ? "المتجر" : "Store"}
-          </Link>
-        </nav>
-      </div>
-    </header>
   )
 }

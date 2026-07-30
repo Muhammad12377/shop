@@ -1,5 +1,6 @@
-import { getTranslations, getLocale } from "next-intl/server"
+import { getTranslations } from "next-intl/server"
 import { Link } from "@/lib/i18n/navigation"
+import { createServerSupabase } from "@/lib/supabase/server"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { ArrowRight, Sparkles, Shield, Truck } from "lucide-react"
@@ -37,6 +38,22 @@ export default async function HomePage({ params }: Props) {
 async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "home" })
   const isRtl = locale === "ar"
+
+  const supabase = await createServerSupabase()
+  const { data: settings } = await supabase.from("settings").select("*").single()
+
+  const heroTitle = settings
+    ? isRtl
+      ? settings.hero_title_ar || t("hero_title")
+      : settings.hero_title_en || t("hero_title")
+    : t("hero_title")
+
+  const heroSubtitle = settings
+    ? isRtl
+      ? settings.hero_subtitle_ar || t("hero_subtitle")
+      : settings.hero_subtitle_en || t("hero_subtitle")
+    : t("hero_subtitle")
+
   return (
     <section className="relative bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white overflow-hidden">
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
@@ -48,12 +65,8 @@ async function HeroSection({ locale }: { locale: string }) {
               {isRtl ? "مجموعة 2026" : "2026 Collection"}
             </span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-            {t("hero_title")}
-          </h1>
-          <p className="text-lg md:text-xl text-zinc-400 mb-8 max-w-lg">
-            {t("hero_subtitle")}
-          </p>
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">{heroTitle}</h1>
+          <p className="text-lg md:text-xl text-zinc-400 mb-8 max-w-lg">{heroSubtitle}</p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
               href="/products"
@@ -116,30 +129,50 @@ async function FeaturesSection({ locale }: { locale: string }) {
 
 async function CategoriesSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "home" })
-  const categories = [
-    { key: "men", color: "from-blue-900 to-blue-700" },
-    { key: "women", color: "from-pink-900 to-pink-700" },
-    { key: "kids", color: "from-green-900 to-green-700" },
-    { key: "sports", color: "from-orange-900 to-orange-700" },
-  ]
+  const isRtl = locale === "ar"
+
+  const supabase = await createServerSupabase()
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("active", true)
+    .order("sort_order")
+
+  const colorMap: Record<string, string> = {
+    men: "from-blue-900 to-blue-700",
+    women: "from-pink-900 to-pink-700",
+    kids: "from-green-900 to-green-700",
+    sports: "from-orange-900 to-orange-700",
+  }
+
+  const displayCats = categories && categories.length > 0
+    ? categories
+    : [
+        { id: "1", slug: "men", name_en: "Men", name_ar: "رجالي" },
+        { id: "2", slug: "women", name_en: "Women", name_ar: "نسائي" },
+        { id: "3", slug: "kids", name_en: "Kids", name_ar: "أطفال" },
+        { id: "4", slug: "sports", name_en: "Sports", name_ar: "رياضي" },
+      ]
 
   return (
     <section className="py-16 bg-zinc-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold mb-2">{t("categories")}</h2>
-          <p className="text-zinc-500">{locale === "ar" ? "تصفح حسب التصنيف" : "Browse by category"}</p>
+          <p className="text-zinc-500">{isRtl ? "تصفح حسب التصنيف" : "Browse by category"}</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {categories.map((cat) => (
+          {displayCats.map((cat: any, i: number) => (
             <Link
-              key={cat.key}
-              href={`/products?category=${cat.key}`}
-              className={`relative h-48 rounded-2xl bg-gradient-to-br ${cat.color} overflow-hidden group`}
+              key={cat.id || i}
+              href={`/products?category=${cat.slug}`}
+              className={`relative h-48 rounded-2xl bg-gradient-to-br ${colorMap[cat.slug] || "from-zinc-900 to-zinc-700"} overflow-hidden group`}
             >
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
               <div className="relative h-full flex items-end p-5">
-                <span className="text-white font-semibold text-lg">{t(cat.key as any)}</span>
+                <span className="text-white font-semibold text-lg">
+                  {isRtl ? cat.name_ar : cat.name_en}
+                </span>
               </div>
             </Link>
           ))}
@@ -152,12 +185,25 @@ async function CategoriesSection({ locale }: { locale: string }) {
 async function FeaturedProductsSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "home" })
   const isRtl = locale === "ar"
-  const placeholderProducts = [
-    { id: "1", name: { en: "Air Max Pulse", ar: "إير ماكس بولس" }, price: 149.99, category: "Men" },
-    { id: "2", name: { en: "Runner X Pro", ar: "رانر إكس برو" }, price: 129.99, category: "Sports" },
-    { id: "3", name: { en: "Street Style 3000", ar: "ستريت ستايل 3000" }, price: 99.99, category: "Women" },
-    { id: "4", name: { en: "Classic Low Top", ar: "كلاسيك لو توب" }, price: 89.99, category: "Kids" },
-  ]
+
+  const supabase = await createServerSupabase()
+  const { data: products } = await supabase
+    .from("products")
+    .select("*, category:categories(*)")
+    .eq("active", true)
+    .eq("featured", true)
+    .order("created_at", { ascending: false })
+    .limit(4)
+
+  const fallback = !products || products.length === 0
+  const displayProducts = fallback
+    ? [
+        { id: "1", name_en: "Air Max Pulse", name_ar: "إير ماكس بولس", price: 149.99, category: { name_en: "Men", name_ar: "رجالي" } },
+        { id: "2", name_en: "Runner X Pro", name_ar: "رانر إكس برو", price: 129.99, category: { name_en: "Sports", name_ar: "رياضي" } },
+        { id: "3", name_en: "Street Style 3000", name_ar: "ستريت ستايل 3000", price: 99.99, category: { name_en: "Women", name_ar: "نسائي" } },
+        { id: "4", name_en: "Classic Low Top", name_ar: "كلاسيك لو توب", price: 89.99, category: { name_en: "Kids", name_ar: "أطفال" } },
+      ]
+    : products
 
   return (
     <section className="py-16 bg-white">
@@ -172,23 +218,43 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {placeholderProducts.map((product) => (
+          {displayProducts.map((product: any) => (
             <Link
               key={product.id}
               href={`/product/${product.id}`}
               className="group bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/30 transition-all"
             >
-              <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center">
-                <span className="text-zinc-400 text-sm">
-                  {isRtl ? "صورة المنتج" : "Product Image"}
-                </span>
+              <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
+                {product.images?.[0] ? (
+                  <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-zinc-400 text-sm">
+                    {isRtl ? "صورة المنتج" : "Product Image"}
+                  </span>
+                )}
+                {product.compare_price && (
+                  <span className="absolute top-3 left-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
+                    {Math.round((1 - product.price / product.compare_price) * 100)}% OFF
+                  </span>
+                )}
               </div>
               <div className="p-4">
-                <p className="text-xs text-zinc-400 mb-1">{product.category}</p>
+                <p className="text-xs text-zinc-400 mb-1">
+                  {product.category
+                    ? isRtl
+                      ? product.category.name_ar
+                      : product.category.name_en
+                    : ""}
+                </p>
                 <h3 className="font-medium group-hover:text-accent transition-colors">
-                  {isRtl ? product.name.ar : product.name.en}
+                  {isRtl ? product.name_ar : product.name_en}
                 </h3>
-                <p className="text-accent font-bold mt-1">${product.price}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-accent font-bold">${product.price}</p>
+                  {product.compare_price && (
+                    <p className="text-xs text-zinc-400 line-through">${product.compare_price}</p>
+                  )}
+                </div>
               </div>
             </Link>
           ))}

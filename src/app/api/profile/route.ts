@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server"
+import { createServerSupabase } from "@/lib/supabase/server"
+import type { ApiResponse } from "@/types"
+
+async function requireAuth() {
+  const supabase = await createServerSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  return { supabase, user }
+}
+
+export async function GET() {
+  const auth = await requireAuth()
+  if (!auth) return NextResponse.json({ success: false, error: "Unauthorized" } satisfies ApiResponse, { status: 401 })
+
+  const { data, error } = await auth.supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", auth.user.id)
+    .single()
+
+  if (error) return NextResponse.json({ success: false, error: error.message } satisfies ApiResponse, { status: 500 })
+  return NextResponse.json({ success: true, data } satisfies ApiResponse)
+}
+
+export async function PUT(request: NextRequest) {
+  const auth = await requireAuth()
+  if (!auth) return NextResponse.json({ success: false, error: "Unauthorized" } satisfies ApiResponse, { status: 401 })
+
+  const body = await request.json()
+
+  const allowedFields: Record<string, any> = {}
+  if (body.full_name !== undefined) allowedFields.full_name = body.full_name
+  if (body.phone !== undefined) allowedFields.phone = body.phone
+  if (body.address !== undefined) allowedFields.address = body.address
+  if (body.city !== undefined) allowedFields.city = body.city
+  if (body.avatar_url !== undefined) allowedFields.avatar_url = body.avatar_url
+
+  const { data, error } = await auth.supabase
+    .from("profiles")
+    .update(allowedFields)
+    .eq("id", auth.user.id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ success: false, error: error.message } satisfies ApiResponse, { status: 500 })
+  return NextResponse.json({ success: true, data } satisfies ApiResponse)
+}

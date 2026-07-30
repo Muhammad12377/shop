@@ -1,96 +1,147 @@
-import { getTranslations } from "next-intl/server"
-import { createServerSupabase } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
-import Link from "next/link"
-import { ShoppingBag, DollarSign, Package, Users, ArrowRight } from "lucide-react"
+"use client"
 
-type Props = {
-  params: Promise<{ locale: string }>
+import { useEffect, useState } from "react"
+import {
+  ShoppingBag,
+  DollarSign,
+  Package,
+  Users,
+  Clock,
+  AlertTriangle,
+} from "lucide-react"
+import type { AdminStats, Order } from "@/types"
+
+const statusColors: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  shipped: "bg-purple-100 text-purple-800",
+  delivered: "bg-green-100 text-green-800",
+  cancelled: "bg-red-100 text-red-800",
 }
 
-export default async function AdminDashboard({ params }: Props) {
-  const { locale } = await params
-  const t = await getTranslations({ locale, namespace: "admin" })
+const statusColorsChart: string[] = [
+  "bg-yellow-500",
+  "bg-blue-500",
+  "bg-purple-500",
+  "bg-green-500",
+  "bg-red-500",
+]
+
+export default function AdminDashboardPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
+  const [locale, setLocale] = useState("en")
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    paramsPromise.then((p) => setLocale(p.locale))
+  }, [paramsPromise])
+
   const isRtl = locale === "ar"
 
-  const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/auth")
+  useEffect(() => {
+    fetch("/api/admin/stats")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setError(data.error)
+        else setStats(data)
+      })
+      .catch(() => setError("Failed to load stats"))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-8 h-8 border-4 border-[#f97316] border-t-transparent rounded-full" />
+      </div>
+    )
+  }
 
-  if (profile?.role !== "admin") redirect("/")
+  if (error) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-red-500">{isRtl ? "حدث خطأ في تحميل البيانات" : "Failed to load data"}</p>
+        <button onClick={() => window.location.reload()} className="mt-4 text-[#f97316] hover:underline text-sm">
+          {isRtl ? "إعادة المحاولة" : "Retry"}
+        </button>
+      </div>
+    )
+  }
 
-  const { count: totalOrders } = await supabase
-    .from("orders")
-    .select("*", { count: "exact", head: true })
-
-  const { count: totalProducts } = await supabase
-    .from("products")
-    .select("*", { count: "exact", head: true })
-
-  const { count: totalUsers } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-
-  const { data: recentOrders } = await supabase
-    .from("orders")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(5)
-
-  const stats = [
-    { label: t("total_orders"), value: totalOrders || 0, icon: ShoppingBag, color: "bg-blue-500" },
-    { label: t("total_revenue"), value: `$${0}`, icon: DollarSign, color: "bg-green-500" },
-    { label: t("total_products"), value: totalProducts || 0, icon: Package, color: "bg-accent" },
-    { label: t("total_users"), value: totalUsers || 0, icon: Users, color: "bg-purple-500" },
+  const statCards = [
+    { label: isRtl ? "إجمالي الطلبات" : "Total Orders", value: stats?.total_orders ?? 0, icon: ShoppingBag, color: "bg-blue-500" },
+    { label: isRtl ? "إجمالي الإيرادات" : "Total Revenue", value: `$${(stats?.total_revenue ?? 0).toFixed(2)}`, icon: DollarSign, color: "bg-green-500" },
+    { label: isRtl ? "المنتجات" : "Products", value: stats?.total_products ?? 0, icon: Package, color: "bg-[#f97316]" },
+    { label: isRtl ? "المستخدمين" : "Users", value: stats?.total_users ?? 0, icon: Users, color: "bg-purple-500" },
+    { label: isRtl ? "طلبات معلقة" : "Pending Orders", value: stats?.pending_orders ?? 0, icon: Clock, color: "bg-yellow-500" },
+    { label: isRtl ? "مخزون منخفض" : "Low Stock", value: stats?.low_stock_products ?? 0, icon: AlertTriangle, color: "bg-red-500" },
   ]
 
-  return (
-    <div className="min-h-screen bg-zinc-50">
-      <AdminHeader locale={locale} />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-8">{t("dashboard")}</h1>
+  const maxRevenue = Math.max(...(stats?.revenue_by_month?.map((r) => r.revenue) || [0]), 1)
+  const totalStatusCount = stats?.orders_by_status?.reduce((s, o) => s + o.count, 0) || 1
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl border border-zinc-100 p-5">
-              <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${stat.color} text-white mb-3`}>
-                <stat.icon className="w-5 h-5" />
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-6">{isRtl ? "لوحة التحكم" : "Dashboard"}</h1>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        {statCards.map((card) => {
+          const Icon = card.icon
+          return (
+            <div key={card.label} className="bg-white rounded-xl border border-zinc-200 p-4 hover:shadow-sm transition-shadow">
+              <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${card.color} text-white mb-3`}>
+                <Icon className="w-5 h-5" />
               </div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-sm text-zinc-500">{stat.label}</p>
+              <p className="text-xl font-bold">{card.value}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">{card.label}</p>
             </div>
-          ))}
+          )
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-white rounded-xl border border-zinc-200 p-6">
+          <h2 className="font-semibold mb-4">{isRtl ? "الإيرادات الشهرية" : "Revenue by Month"}</h2>
+          {(!stats?.revenue_by_month || stats.revenue_by_month.length === 0) ? (
+            <p className="text-zinc-400 text-sm text-center py-8">{isRtl ? "لا توجد بيانات" : "No data"}</p>
+          ) : (
+            <div className="flex items-end gap-2 h-40">
+              {stats.revenue_by_month.map((r) => (
+                <div key={r.month} className="flex-1 flex flex-col items-center gap-1">
+                  <div
+                    className="w-full bg-[#f97316] rounded-t-md transition-all"
+                    style={{ height: `${(r.revenue / maxRevenue) * 100}%`, minHeight: "4px" }}
+                  />
+                  <span className="text-[10px] text-zinc-500 -rotate-45 origin-left whitespace-nowrap">
+                    {r.month.slice(5)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-zinc-100 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">{t("recent_orders")}</h2>
-            <Link href="/admin/orders" className="text-sm text-accent hover:underline flex items-center gap-1">
-              {isRtl ? "عرض الكل" : "View All"}
-              <ArrowRight className={`w-3 h-3 ${isRtl ? "rotate-180" : ""}`} />
-            </Link>
-          </div>
-          {(!recentOrders || recentOrders.length === 0) ? (
-            <p className="text-zinc-400 text-sm py-8 text-center">
-              {isRtl ? "لا توجد طلبات بعد" : "No orders yet"}
-            </p>
+        <div className="bg-white rounded-xl border border-zinc-200 p-6">
+          <h2 className="font-semibold mb-4">{isRtl ? "الطلبات حسب الحالة" : "Orders by Status"}</h2>
+          {(!stats?.orders_by_status || stats.orders_by_status.length === 0) ? (
+            <p className="text-zinc-400 text-sm text-center py-8">{isRtl ? "لا توجد بيانات" : "No data"}</p>
           ) : (
             <div className="space-y-3">
-              {recentOrders.map((order: any) => (
-                <div key={order.id} className="flex items-center justify-between py-2 border-b border-zinc-50 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">#{order.id.slice(0, 8)}</p>
-                    <p className="text-xs text-zinc-400">{order.full_name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">${order.total?.toFixed(2)}</p>
-                    <p className="text-xs text-zinc-400 capitalize">{order.status}</p>
+              {stats.orders_by_status.map((s, i) => (
+                <div key={s.status} className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${statusColorsChart[i] || "bg-zinc-400"}`} />
+                  <span className="text-sm capitalize flex-1">
+                    {isRtl
+                      ? ({ pending: "معلق", confirmed: "مؤكد", shipped: "تم الشحن", delivered: "تم التوصيل", cancelled: "ملغي" } as Record<string, string>)[s.status] || s.status
+                      : s.status}
+                  </span>
+                  <span className="text-sm font-medium">{s.count}</span>
+                  <div className="w-24 h-2 bg-zinc-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${statusColorsChart[i] || "bg-zinc-400"}`}
+                      style={{ width: `${(s.count / totalStatusCount) * 100}%` }}
+                    />
                   </div>
                 </div>
               ))}
@@ -98,27 +149,46 @@ export default async function AdminDashboard({ params }: Props) {
           )}
         </div>
       </div>
-    </div>
-  )
-}
 
-function AdminHeader({ locale }: { locale: string }) {
-  const t = { dashboard: locale === "ar" ? "لوحة التحكم" : "Dashboard" }
-  return (
-    <header className="bg-primary text-white">
-      <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/admin" className="font-bold">
-          SNEAKERS <span className="text-accent">CLUB</span>
-        </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/admin" className="hover:text-accent transition-colors">{t.dashboard}</Link>
-          <Link href="/admin/products" className="hover:text-accent transition-colors">{locale === "ar" ? "المنتجات" : "Products"}</Link>
-          <Link href="/admin/orders" className="hover:text-accent transition-colors">{locale === "ar" ? "الطلبات" : "Orders"}</Link>
-          <Link href={`/${locale}`} className="text-zinc-400 hover:text-white transition-colors">
-            {locale === "ar" ? "المتجر" : "Store"}
-          </Link>
-        </nav>
+      <div className="bg-white rounded-xl border border-zinc-200 p-6">
+        <h2 className="font-semibold mb-4">{isRtl ? "آخر الطلبات" : "Recent Orders"}</h2>
+        {(!stats?.recent_orders || stats.recent_orders.length === 0) ? (
+          <p className="text-zinc-400 text-sm text-center py-8">{isRtl ? "لا توجد طلبات" : "No orders yet"}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-100">
+                  <th className="text-left py-3 px-2 font-medium text-zinc-500">ID</th>
+                  <th className="text-left py-3 px-2 font-medium text-zinc-500">{isRtl ? "العميل" : "Customer"}</th>
+                  <th className="text-left py-3 px-2 font-medium text-zinc-500">{isRtl ? "الإجمالي" : "Total"}</th>
+                  <th className="text-left py-3 px-2 font-medium text-zinc-500">{isRtl ? "الحالة" : "Status"}</th>
+                  <th className="text-left py-3 px-2 font-medium text-zinc-500">{isRtl ? "التاريخ" : "Date"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recent_orders.map((order: Order) => (
+                  <tr key={order.id} className="border-b border-zinc-50 hover:bg-zinc-50">
+                    <td className="py-3 px-2 font-medium">#{order.id.slice(0, 8)}</td>
+                    <td className="py-3 px-2 text-zinc-600">{order.full_name}</td>
+                    <td className="py-3 px-2">${order.total?.toFixed(2)}</td>
+                    <td className="py-3 px-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || "bg-zinc-100"}`}>
+                        {isRtl
+                          ? ({ pending: "معلق", confirmed: "مؤكد", shipped: "تم الشحن", delivered: "تم التوصيل", cancelled: "ملغي" } as Record<string, string>)[order.status] || order.status
+                          : order.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-zinc-500">
+                      {new Date(order.created_at).toLocaleDateString(isRtl ? "ar" : "en-US")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </header>
+    </div>
   )
 }
