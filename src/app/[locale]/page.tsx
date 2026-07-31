@@ -87,6 +87,7 @@ async function HeroSection({ locale }: { locale: string }) {
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
               href="/products"
+              locale={locale}
               className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-light text-white px-8 py-3 rounded-full font-medium transition-colors"
             >
               {t("shop_now")}
