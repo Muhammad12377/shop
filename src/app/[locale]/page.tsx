@@ -180,13 +180,23 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
   const isRtl = locale === "ar"
 
   const supabase = await createServerSupabase()
-  const { data: products } = await supabase
+  let { data: products } = await supabase
     .from("products")
     .select("*, category:categories(*)")
     .eq("active", true)
     .eq("featured", true)
     .order("created_at", { ascending: false })
     .limit(4)
+
+  if (!products || products.length === 0) {
+    const { data: latest } = await supabase
+      .from("products")
+      .select("*, category:categories(*)")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(4)
+    products = latest
+  }
 
   const fallback = !products || products.length === 0
   const displayProducts = products || []
