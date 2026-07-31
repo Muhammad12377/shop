@@ -86,8 +86,8 @@ export default function AuthPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (otpCode.trim().length !== 6) {
-      toast.error(isRtl ? "أدخل الرمز المكوّن من 6 أرقام" : "Enter the 6-digit code")
+    if (otpCode.trim().length !== 6 && otpCode.trim().length !== 8) {
+      toast.error(isRtl ? "أدخل الرمز المكوّن من 6 أو 8 أرقام" : "Enter the 6 or 8-digit code")
       return
     }
     setVerifying(true)
@@ -297,16 +297,16 @@ export default function AuthPage() {
                   type="text"
                   inputMode="numeric"
                   autoFocus
-                  maxLength={6}
+                  maxLength={8}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="••••••"
+                  placeholder="••••••••"
                   className="w-full text-center text-2xl font-bold tracking-[0.5em] pl-9 pr-9 py-3 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent"
                 />
 
                 <button
                   type="submit"
-                  disabled={verifying || otpCode.length !== 6}
+                  disabled={verifying || (otpCode.length !== 6 && otpCode.length !== 8)}
                   className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
                 >
                   {verifying ? (
