@@ -174,6 +174,7 @@ export type StoreSettings = {
   hero_title_ar: string
   hero_subtitle_en: string
   hero_subtitle_ar: string
+  hero_image_url?: string
   [key: string]: any
 }
 
