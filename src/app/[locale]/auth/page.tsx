@@ -52,7 +52,10 @@ export default function AuthPage() {
   }, [mode])
 
   useEffect(() => {
-    if (window.location.search.includes("blocked=1")) setBlockedNotice(true)
+    const params = new URLSearchParams(window.location.search)
+    const m = params.get("mode")
+    if (m === "register" || m === "forgot") setMode(m)
+    if (params.has("blocked")) setBlockedNotice(true)
   }, [])
 
   useEffect(() => {
@@ -251,7 +254,13 @@ export default function AuthPage() {
     }
   }
 
-  const otpBack = () => setMode(otpOrigin === "forgot" ? "forgot" : "login")
+  const switchMode = (m: "login" | "register" | "forgot") => {
+    const url = new URL(window.location.href)
+    url.searchParams.set("mode", m)
+    window.location.href = url.toString()
+  }
+
+  const otpBack = () => switchMode(otpOrigin === "forgot" ? "forgot" : "login")
 
   return (
     <>
@@ -376,7 +385,7 @@ export default function AuthPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode("login")}
+                  onClick={() => switchMode("login")}
                   className="w-full text-center text-sm text-zinc-500 hover:text-zinc-700 hover:underline"
                 >
                   {isRtl ? "رجوع لتسجيل الدخول" : "Back to login"}
@@ -530,20 +539,20 @@ export default function AuthPage() {
                   {mode === "login" ? (
                     <>
                       <button
-                        onClick={() => setMode("forgot")}
+                        onClick={() => switchMode("forgot")}
                         className="block w-full mb-3 text-accent font-medium hover:underline"
                       >
                         {isRtl ? "نسيت كلمة المرور؟" : "Forgot password?"}
                       </button>
                       {t("no_account")}{" "}
-                      <button onClick={() => setMode("register")} className="text-accent font-medium hover:underline">
+                      <button onClick={() => switchMode("register")} className="text-accent font-medium hover:underline">
                         {t("register_btn")}
                       </button>
                     </>
                   ) : (
                     <>
                       {t("have_account")}{" "}
-                      <button onClick={() => setMode("login")} className="text-accent font-medium hover:underline">
+                      <button onClick={() => switchMode("login")} className="text-accent font-medium hover:underline">
                         {t("login_btn")}
                       </button>
                     </>
