@@ -100,6 +100,10 @@ export async function POST(req: NextRequest) {
         ${link ? `<p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#f97316;color:#ffffff;text-decoration:none;border-radius:8px">Continue</a></p>` : "<p>Please try again.</p>"}
       </div>`
 
+  const text = isNumericCode
+    ? `Your Sneakers Club verification code is: ${token}\n\nUse it to ${label}. This code expires shortly and can only be used once.`
+    : `Sneakers Club - ${label}\n\n${link ? `Open this link to continue: ${link}` : "Please try again."}`
+
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
@@ -114,7 +118,9 @@ export async function POST(req: NextRequest) {
     await transporter.sendMail({
       from: `Sneakers Club <${process.env.GMAIL_SMTP_USER}>`,
       to: email,
+      replyTo: process.env.GMAIL_SMTP_USER,
       subject,
+      text,
       html,
     })
   } catch (err: any) {
