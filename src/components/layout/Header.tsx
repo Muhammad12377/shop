@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { ShoppingCart, Menu, X, Search, User, Package, Heart, ChevronDown, LogOut } from "lucide-react"
+import { ShoppingCart, Menu, X, Search, User, Package, Heart, ChevronDown, LogOut, LayoutDashboard } from "lucide-react"
 import { Link, usePathname, useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
@@ -27,7 +27,7 @@ export default function Header() {
         setUser(data.user)
         supabase
           .from("profiles")
-          .select("full_name, avatar_url")
+          .select("full_name, avatar_url, role")
           .eq("id", data.user.id)
           .single()
           .then(({ data: prof }) => setProfile(prof))
@@ -156,6 +156,16 @@ export default function Header() {
                         <Heart className="w-4 h-4 text-zinc-400" />
                         {t("wishlist")}
                       </Link>
+                      {profile?.role === "admin" && (
+                        <Link
+                          href="/admin"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-zinc-50 transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <LayoutDashboard className="w-4 h-4 text-zinc-400" />
+                          {t("admin")}
+                        </Link>
+                      )}
                       <hr className="border-zinc-100 my-2" />
                       <button
                         onClick={handleLogout}
@@ -220,6 +230,11 @@ export default function Header() {
                   <Link href="/account/wishlist" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
                     {t("wishlist")}
                   </Link>
+                  {profile?.role === "admin" && (
+                    <Link href="/admin" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
+                      {t("admin")}
+                    </Link>
+                  )}
                 </>
               )}
               <hr className="border-zinc-100 my-2" />
