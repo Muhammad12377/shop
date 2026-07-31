@@ -156,6 +156,9 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                       <h4 className="text-xs font-medium text-zinc-500 uppercase mb-1">{isRtl ? "عنوان الشحن" : "Shipping Address"}</h4>
                       <p className="text-sm">{order.address}</p>
                       <p className="text-sm text-zinc-500">{order.city}</p>
+                      <p className="text-sm text-zinc-500">
+                        {[order.shipping_country, order.shipping_zone].filter(Boolean).join(" - ")}
+                      </p>
                     </div>
                   </div>
 

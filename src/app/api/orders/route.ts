@@ -48,6 +48,36 @@ export async function POST(request: NextRequest) {
 
   const subtotal = body.items.reduce((sum: number, item: any) => sum + Number(item.price) * Number(item.quantity), 0)
 
+  let shipping_country: string | null = null
+  let shipping_zone: string | null = null
+  let zone_price: number | null = null
+  let country_price: number | null = null
+
+  if (body.country_id) {
+    const { data: country } = await auth.supabase
+      .from("shipping_countries")
+      .select("price, name_en, name_ar")
+      .eq("id", body.country_id)
+      .eq("active", true)
+      .single()
+    if (country) {
+      country_price = Number(country.price)
+      shipping_country = country.name_en
+    }
+    if (body.zone_id) {
+      const { data: zone } = await auth.supabase
+        .from("shipping_zones")
+        .select("price, name_en, name_ar")
+        .eq("id", body.zone_id)
+        .eq("active", true)
+        .single()
+      if (zone) {
+        zone_price = Number(zone.price)
+        shipping_zone = zone.name_en
+      }
+    }
+  }
+
   let discount = 0
   let coupon_code: string | null = null
 
@@ -73,7 +103,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const effective_shipping = subtotal >= free_shipping_min ? 0 : shipping_fee
+  const baseFee = zone_price ?? country_price ?? shipping_fee
+  const effective_shipping = subtotal >= free_shipping_min ? 0 : baseFee
   const total = Math.max(0, subtotal - discount) + effective_shipping
 
   const { data: order, error } = await auth.supabase
@@ -90,6 +121,10 @@ export async function POST(request: NextRequest) {
       phone: body.phone,
       address: body.address,
       city: body.city,
+      shipping_country,
+      shipping_zone,
+      country_id: body.country_id || null,
+      zone_id: body.zone_id || null,
       notes: body.notes || null,
       items: body.items,
     })

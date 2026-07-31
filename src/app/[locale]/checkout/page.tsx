@@ -33,6 +33,9 @@ export default function CheckoutPage() {
     notes: "",
   })
   const [settings, setSettings] = useState<any>(null)
+  const [shippingCountries, setShippingCountries] = useState<any[]>([])
+  const [selectedCountryId, setSelectedCountryId] = useState("")
+  const [selectedZoneId, setSelectedZoneId] = useState("")
   const locale = useLocale()
   const isRtl = locale === "ar"
 
@@ -69,6 +72,18 @@ export default function CheckoutPage() {
         for (const row of data || []) s[row.key] = row.value
         setSettings(s)
       })
+    fetch("/api/shipping")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setShippingCountries(data)
+          if (data.length === 1) {
+            setSelectedCountryId(data[0].id)
+            if (data[0].zones?.length === 1) setSelectedZoneId(data[0].zones[0].id)
+          }
+        }
+      })
+      .catch(() => {})
   }, [])
 
   if (items.length === 0) {
@@ -77,10 +92,17 @@ export default function CheckoutPage() {
   }
 
   const subtotal = total()
+  const selectedCountry = shippingCountries.find((c) => c.id === selectedCountryId)
+  const selectedZone = selectedCountry?.zones?.find((z: any) => z.id === selectedZoneId)
+  const baseShipping = selectedZone
+    ? Number(selectedZone.price)
+    : selectedCountry
+      ? Number(selectedCountry.price)
+      : Number(settings?.shipping_fee) || 5
   const shippingFee =
     settings && subtotal >= (settings.free_shipping_min || 100)
       ? 0
-      : settings?.shipping_fee || 5
+      : baseShipping
   const grandTotal = subtotal + shippingFee - discount
 
   const selectAddress = (addr: Address) => {
@@ -159,6 +181,10 @@ export default function CheckoutPage() {
           phone: form.phone,
           address: form.address,
           city: form.city,
+          shipping_country: selectedCountry ? (isRtl ? selectedCountry.name_ar : selectedCountry.name_en) : null,
+          shipping_zone: selectedZone ? (isRtl ? selectedZone.name_ar : selectedZone.name_en) : null,
+          country_id: selectedCountryId || null,
+          zone_id: selectedZoneId || null,
           notes: form.notes,
           items: orderItems,
         })
@@ -295,6 +321,42 @@ export default function CheckoutPage() {
                     className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
                     required
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{isRtl ? "الدولة" : "Country"}</label>
+                    <select
+                      value={selectedCountryId}
+                      onChange={(e) => { setSelectedCountryId(e.target.value); setSelectedZoneId("") }}
+                      required
+                      className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm bg-white"
+                    >
+                      <option value="">{isRtl ? "اختر الدولة..." : "Select country..."}</option>
+                      {shippingCountries.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {isRtl ? c.name_ar : c.name_en}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {(selectedCountry?.zones?.length || 0) > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">{isRtl ? "المحافظة" : "Governorate"}</label>
+                      <select
+                        value={selectedZoneId}
+                        onChange={(e) => setSelectedZoneId(e.target.value)}
+                        required
+                        className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm bg-white"
+                      >
+                        <option value="">{isRtl ? "اختر المحافظة..." : "Select governorate..."}</option>
+                        {selectedCountry.zones.map((z: any) => (
+                          <option key={z.id} value={z.id}>
+                            {isRtl ? z.name_ar : z.name_en}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">{t("notes")}</label>

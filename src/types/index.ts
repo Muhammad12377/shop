@@ -84,6 +84,10 @@ export type Order = {
   phone: string
   address: string
   city: string
+  shipping_country?: string
+  shipping_zone?: string
+  country_id?: string
+  zone_id?: string
   notes?: string
   items: OrderItem[]
   created_at: string
@@ -183,6 +187,26 @@ export type Media = {
   url: string
   alt?: string
   created_at: string
+}
+
+export type ShippingZone = {
+  id: string
+  country_id: string
+  name_en: string
+  name_ar: string
+  price: number
+  active: boolean
+  created_at: string
+}
+
+export type ShippingCountry = {
+  id: string
+  name_en: string
+  name_ar: string
+  price: number
+  active: boolean
+  created_at: string
+  zones?: ShippingZone[]
 }
 
 export type ApiResponse<T = any> = {

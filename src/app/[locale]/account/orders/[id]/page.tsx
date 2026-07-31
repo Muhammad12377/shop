@@ -187,6 +187,9 @@ export default function OrderDetailPage() {
           <p>{order.phone}</p>
           <p>{order.address}</p>
           <p>{order.city}</p>
+          <p>
+            {[order.shipping_country, order.shipping_zone].filter(Boolean).join(" - ")}
+          </p>
         </div>
         {order.notes && (
           <div className="mt-4">
