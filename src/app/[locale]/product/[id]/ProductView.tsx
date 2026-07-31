@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from "next-intl"
 import Image from "next/image"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Link } from "@/lib/i18n/navigation"
+import { Link, useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
@@ -16,6 +16,7 @@ import { colorBackground, colorLabel } from "@/lib/colors"
 export default function ProductView({ product, siblings }: { product: any; siblings?: any[] }) {
   const t = useTranslations("product")
   const params = useParams<{ locale: string; id: string }>()
+  const router = useRouter()
   const [related, setRelated] = useState<any[]>([])
   const hasPerSize = !!(product?.size_stock && Object.keys(product.size_stock).length > 0)
   const sizeQty = (s: string) => (hasPerSize ? Number(product?.size_stock?.[s] ?? 0) : product?.stock ?? 0)
@@ -77,8 +78,15 @@ export default function ProductView({ product, siblings }: { product: any; sibli
     }
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product || atLimit) return
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      toast.error(isRtl ? "يرجى تسجيل الدخول لإضافة المنتجات إلى السلة" : "Please login to add items to your cart")
+      router.push("/auth")
+      return
+    }
     const cartId = crypto.randomUUID?.() || Math.random().toString()
     addItem({
       id: cartId,

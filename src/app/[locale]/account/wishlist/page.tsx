@@ -49,9 +49,15 @@ export default function WishlistPage() {
     setRemoving(null)
   }
 
-  const handleAddToCart = (item: any) => {
+  const handleAddToCart = async (item: any) => {
     const product = item.products
     if (!product) return
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      toast.error(isRtl ? "يرجى تسجيل الدخول لإضافة المنتجات إلى السلة" : "Please login to add items to your cart")
+      return
+    }
     addItem({
       id: crypto.randomUUID?.() || Math.random().toString(),
       product_id: product.id,

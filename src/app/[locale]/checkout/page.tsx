@@ -8,7 +8,7 @@ import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
-import { CreditCard, MapPin, Phone, User, FileText, Ticket, Plus, X } from "lucide-react"
+import { CreditCard, MapPin, Phone, User, FileText, Ticket, Plus, X, ChevronDown } from "lucide-react"
 import { colorLabel } from "@/lib/colors"
 import { PHONE_CODES, splitPhone } from "@/lib/phone-codes"
 import type { Address, Coupon } from "@/types"
@@ -34,6 +34,7 @@ export default function CheckoutPage() {
     notes: "",
   })
   const [phoneCode, setPhoneCode] = useState("+963")
+  const [showSummary, setShowSummary] = useState(true)
   const [settings, setSettings] = useState<any>(null)
   const [shippingCountries, setShippingCountries] = useState<any[]>([])
   const [selectedCountryId, setSelectedCountryId] = useState("")
@@ -279,11 +280,55 @@ export default function CheckoutPage() {
   return (
     <>
       <Header />
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-8">{t("title")}</h1>
+      <div className="max-w-4xl mx-auto px-4 py-8 pb-32 md:pb-8">
+        <h1 className="text-xl sm:text-2xl font-bold mb-6">{t("title")}</h1>
+
+        <div className="md:hidden mb-4">
+          <div className="bg-white rounded-2xl border border-zinc-100 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowSummary(!showSummary)}
+              className="w-full flex items-center justify-between p-4"
+            >
+              <span className="font-semibold text-sm">
+                {t("order_summary")} ({items.length})
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="text-accent font-bold">${grandTotal.toFixed(2)}</span>
+                <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${showSummary ? "rotate-180" : ""}`} />
+              </span>
+            </button>
+            {showSummary && (
+              <div className="px-4 pb-4 border-t border-zinc-100">
+                <div className="space-y-3 py-3 max-h-56 overflow-y-auto">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-zinc-100 shrink-0 overflow-hidden relative">
+                        {item.image ? (
+                          <Image src={item.image} alt={isRtl ? item.name_ar : item.name_en} fill sizes="48px" className="object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {isRtl ? item.name_ar : item.name_en}
+                        </p>
+                        <p className="text-xs text-zinc-400">
+                          {item.size} / {colorLabel(item.color)} x{item.quantity}
+                        </p>
+                      </div>
+                      <p className="text-sm font-medium shrink-0">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="grid md:grid-cols-5 gap-8">
-          <form onSubmit={handleSubmit} className="md:col-span-3 space-y-6">
+          <form onSubmit={handleSubmit} id="checkout-form" className="md:col-span-3 space-y-6">
             {addresses.length > 0 && (
               <div className="bg-white rounded-2xl border border-zinc-100 p-6">
                 <h2 className="font-semibold mb-4 flex items-center gap-2">
@@ -392,7 +437,7 @@ export default function CheckoutPage() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">{isRtl ? "الدولة" : "Country"}</label>
                     <select
@@ -484,7 +529,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-full bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
+              className="hidden md:block w-full py-3 rounded-full bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
             >
               {loading ? "Loading..." : t("place_order")}
             </button>
@@ -563,6 +608,23 @@ export default function CheckoutPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-zinc-200 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="shrink-0">
+            <p className="text-xs text-zinc-500">{ct("total")}</p>
+            <p className="text-xl font-bold text-accent">${grandTotal.toFixed(2)}</p>
+          </div>
+          <button
+            type="submit"
+            form="checkout-form"
+            disabled={loading}
+            className="flex-1 bg-accent text-white py-3.5 px-6 rounded-full font-medium hover:bg-accent-light transition-colors active:scale-[0.98] disabled:opacity-50"
+          >
+            {loading ? "..." : t("place_order")}
+          </button>
         </div>
       </div>
     </>
