@@ -26,6 +26,14 @@ export default function ProductView({ product, siblings }: { product: any; sibli
   const [showVideo, setShowVideo] = useState(false)
   const [inWishlist, setInWishlist] = useState(false)
   const addItem = useCartStore((s) => s.addItem)
+  const cartQty = useCartStore((s) =>
+    s.items
+      .filter((i) => i.product_id === product?.id && i.size === selectedSize)
+      .reduce((a, b) => a + b.quantity, 0)
+  )
+  const maxQty = selectedSize ? sizeQty(selectedSize) : product?.stock ?? 0
+  const remaining = Math.max(0, maxQty - cartQty)
+  const atLimit = remaining <= 0
   const locale = useLocale()
   const isRtl = locale === "ar"
 
@@ -70,7 +78,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
   }
 
   const handleAddToCart = () => {
-    if (!product) return
+    if (!product || atLimit) return
     const cartId = crypto.randomUUID?.() || Math.random().toString()
     addItem({
       id: cartId,
@@ -316,11 +324,13 @@ export default function ProductView({ product, siblings }: { product: any; sibli
             <div className="flex items-center gap-3">
               <button
                 onClick={handleAddToCart}
-                disabled={selectedSize ? sizeQty(selectedSize) <= 0 : product.stock <= 0}
+                disabled={atLimit}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
               >
                 <ShoppingCart className="w-5 h-5" />
-                {t("add_to_cart")}
+                {atLimit
+                  ? isRtl ? "الكمية القصوى في السلة" : "Max quantity in cart"
+                  : t("add_to_cart")}
               </button>
               <button
                 onClick={toggleWishlist}
