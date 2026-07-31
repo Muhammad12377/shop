@@ -8,7 +8,8 @@ import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import { Mail, Lock, User, Eye, EyeOff, Loader2, ShieldCheck, ArrowRight } from "lucide-react"
 
-type AuthMode = "login" | "register" | "otp"
+type AuthMode = "login" | "register" | "otp" | "forgot" | "newpassword"
+type OtpOrigin = "register" | "forgot"
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -25,7 +26,7 @@ export default function AuthPage() {
   const locale = useLocale()
   const isRtl = locale === "ar"
   const [mode, setMode] = useState<AuthMode>("login")
-  const [otpOrigin, setOtpOrigin] = useState<"login" | "register">("login")
+  const [otpOrigin, setOtpOrigin] = useState<OtpOrigin>("register")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
@@ -37,6 +38,9 @@ export default function AuthPage() {
   const [otpCode, setOtpCode] = useState("")
   const [otpTimer, setOtpTimer] = useState(0)
   const [verifying, setVerifying] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showNewPassword, setShowNewPassword] = useState(false)
 
   useEffect(() => {
     if (window.location.search.includes("blocked=1")) setBlockedNotice(true)
@@ -48,7 +52,7 @@ export default function AuthPage() {
     return () => clearInterval(timer)
   }, [otpTimer])
 
-  const sendOtp = async (target: string) => {
+  const sendOtp = async (target: string, origin: OtpOrigin) => {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOtp({
       email: target,
@@ -58,29 +62,13 @@ export default function AuthPage() {
     setOtpEmail(target)
     setOtpCode("")
     setOtpTimer(60)
+    setOtpOrigin(origin)
     setMode("otp")
-  }
-
-  const handleOtpLogin = async () => {
-    if (!email.trim()) {
-      toast.error(isRtl ? "أدخل بريدك الإلكتروني أولًا" : "Enter your email first")
-      return
-    }
-    setLoading(true)
-    try {
-      await sendOtp(email.trim())
-      setOtpOrigin("login")
-      toast.success(isRtl ? "تم إرسال رمز التحقق إلى بريدك" : "Verification code sent to your email")
-    } catch (err: any) {
-      toast.error(err.message)
-    } finally {
-      setLoading(false)
-    }
   }
 
   const handleResendOtp = async () => {
     try {
-      await sendOtp(otpEmail)
+      await sendOtp(otpEmail, otpOrigin)
       toast.success(isRtl ? "تم إعادة إرسال الرمز" : "Code resent")
     } catch (err: any) {
       toast.error(err.message)
@@ -102,13 +90,60 @@ export default function AuthPage() {
         type: "email",
       })
       if (error) throw error
-      toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
+      if (otpOrigin === "forgot") {
+        setMode("newpassword")
+        toast.success(isRtl ? "تم التحقق! أدخل كلمة مرور جديدة" : "Verified! Enter a new password")
+      } else {
+        toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
+        router.push("/")
+        router.refresh()
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  const handleSubmitNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newPassword.length < 6) {
+      toast.error(isRtl ? "كلمة المرور يجب أن تكون 6 أحرف على الأقل" : "Password must be at least 6 characters")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error(isRtl ? "كلمتا المرور غير متطابقتين" : "Passwords do not match")
+      return
+    }
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      toast.success(isRtl ? "تم تغيير كلمة المرور بنجاح" : "Password changed successfully")
       router.push("/")
       router.refresh()
     } catch (err: any) {
       toast.error(err.message)
     } finally {
-      setVerifying(false)
+      setLoading(false)
+    }
+  }
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) {
+      toast.error(isRtl ? "أدخل بريدك الإلكتروني" : "Enter your email")
+      return
+    }
+    setLoading(true)
+    try {
+      await sendOtp(email.trim(), "forgot")
+      toast.success(isRtl ? "أرسلنا رمز التحقق إلى بريدك" : "Verification code sent to your email")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -147,8 +182,7 @@ export default function AuthPage() {
           options: { data: { full_name: name } },
         })
         if (error) throw error
-        await sendOtp(email)
-        setOtpOrigin("register")
+        await sendOtp(email, "register")
         toast.success(isRtl ? "تم إنشاء الحساب! أدخل رمز التحقق المرسل إلى بريدك" : "Account created! Enter the code sent to your email")
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -174,6 +208,8 @@ export default function AuthPage() {
     }
   }
 
+  const otpBack = () => setMode(otpOrigin === "forgot" ? "forgot" : "login")
+
   return (
     <>
       <Header />
@@ -183,15 +219,23 @@ export default function AuthPage() {
             <h1 className="text-2xl font-bold text-center mb-2">
               {mode === "otp"
                 ? isRtl ? "رمز التحقق" : "Verification Code"
-                : mode === "login" ? t("login_title") : t("register_title")}
+                : mode === "forgot"
+                  ? isRtl ? "نسيت كلمة المرور" : "Forgot Password"
+                  : mode === "newpassword"
+                    ? isRtl ? "كلمة مرور جديدة" : "New Password"
+                    : mode === "login" ? t("login_title") : t("register_title")}
             </h1>
             <p className="text-zinc-500 text-sm text-center mb-8">
               {mode === "otp"
                 ? isRtl ? "أدخل الرمز المكوّن من 6 أرقام" : "Enter the 6-digit code"
-                : "Sneakers Club Syria"}
+                : mode === "forgot"
+                  ? isRtl ? "أدخل بريدك وسنرسل لك رمز تحقق" : "Enter your email and we'll send a code"
+                  : mode === "newpassword"
+                    ? isRtl ? "اختر كلمة مرور جديدة لحسابك" : "Choose a new password for your account"
+                    : "Sneakers Club Syria"}
             </p>
 
-            {blockedNotice && mode !== "otp" && (
+            {blockedNotice && (mode === "login" || mode === "register") && (
               <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 text-center">
                 {isRtl
                   ? "تم حظر حسابك. تواصل مع الإدارة للمزيد من المعلومات."
@@ -199,7 +243,7 @@ export default function AuthPage() {
               </div>
             )}
 
-            {mode === "otp" ? (
+            {mode === "otp" && (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div className="p-3 rounded-xl bg-[#f97316]/5 border border-[#f97316]/15 text-sm text-zinc-600 text-center">
                   <ShieldCheck className="w-4 h-4 inline-block text-[#f97316] mb-1" />
@@ -238,7 +282,7 @@ export default function AuthPage() {
                 <div className="flex items-center justify-between text-sm">
                   <button
                     type="button"
-                    onClick={() => setMode(otpOrigin)}
+                    onClick={otpBack}
                     className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-700 hover:underline"
                   >
                     <ArrowRight className={`w-3.5 h-3.5 ${isRtl ? "rotate-180" : ""}`} />
@@ -256,7 +300,104 @@ export default function AuthPage() {
                   </button>
                 </div>
               </form>
-            ) : (
+            )}
+
+            {mode === "forgot" && (
+              <form onSubmit={handleForgot} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">{t("email")}</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {isRtl ? "جارٍ الإرسال..." : "Sending..."}
+                    </span>
+                  ) : (
+                    isRtl ? "إرسال رمز التحقق" : "Send verification code"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className="w-full text-center text-sm text-zinc-500 hover:text-zinc-700 hover:underline"
+                >
+                  {isRtl ? "رجوع لتسجيل الدخول" : "Back to login"}
+                </button>
+              </form>
+            )}
+
+            {mode === "newpassword" && (
+              <form onSubmit={handleSubmitNewPassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">{t("password")}</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    {isRtl ? "تأكيد كلمة المرور" : "Confirm password"}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {isRtl ? "جارٍ الحفظ..." : "Saving..."}
+                    </span>
+                  ) : (
+                    isRtl ? "حفظ كلمة المرور" : "Save password"
+                  )}
+                </button>
+              </form>
+            )}
+
+            {(mode === "login" || mode === "register") && (
               <>
                 <button
                   type="button"
@@ -306,17 +447,6 @@ export default function AuthPage() {
                   </div>
 
                   {mode === "login" && (
-                    <button
-                      type="button"
-                      onClick={handleOtpLogin}
-                      disabled={loading}
-                      className="text-xs text-accent hover:underline text-left"
-                    >
-                      {isRtl ? "الدخول برمز تحقق بدل كلمة المرور" : "Sign in with a code instead of password"}
-                    </button>
-                  )}
-
-                  {mode === "login" && (
                     <div>
                       <label className="block text-sm font-medium mb-1.5">{t("password")}</label>
                       <div className="relative">
@@ -352,6 +482,12 @@ export default function AuthPage() {
                 <div className="mt-6 text-center text-sm text-zinc-500">
                   {mode === "login" ? (
                     <>
+                      <button
+                        onClick={() => setMode("forgot")}
+                        className="block w-full mb-3 text-accent font-medium hover:underline"
+                      >
+                        {isRtl ? "نسيت كلمة المرور؟" : "Forgot password?"}
+                      </button>
                       {t("no_account")}{" "}
                       <button onClick={() => setMode("register")} className="text-accent font-medium hover:underline">
                         {t("register_btn")}
