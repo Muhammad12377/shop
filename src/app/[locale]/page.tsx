@@ -94,6 +94,7 @@ async function HeroSection({ locale }: { locale: string }) {
             </Link>
             <Link
               href="/products?category=men"
+              locale={locale}
               className="inline-flex items-center justify-center gap-2 border border-white/20 hover:border-white/40 text-white px-8 py-3 rounded-full font-medium transition-colors"
             >
               {t("men")}
@@ -171,6 +172,7 @@ async function CategoriesSection({ locale }: { locale: string }) {
             <Link
               key={cat.id || i}
               href={`/products?category=${cat.slug}`}
+              locale={locale}
               className={`relative h-48 rounded-2xl overflow-hidden group ${
                 cat.image_url
                   ? "bg-zinc-200"
@@ -229,6 +231,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
             <Link
               key={product.id}
               href={`/product/${product.id}`}
+              locale={locale}
               className="group bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/30 transition-all"
             >
               <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
