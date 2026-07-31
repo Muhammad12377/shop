@@ -195,28 +195,28 @@ export default function AuthPage() {
     const supabase = createClient()
 
     try {
-      if (mode === "register") {
-        if (TURNSTILE_SITE_KEY) {
-          if (!captchaToken) {
-            toast.error(isRtl ? "أكمل التحقق الأمني" : "Complete the security check")
-            return
-          }
-          const res = await fetch("/api/auth/captcha-verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: captchaToken }),
-          })
-          const captchaResult = await res.json()
-          if (!captchaResult?.success) {
-            const code = captchaResult?.error ? ` (${captchaResult.error})` : ""
-            toast.error(
-              isRtl ? `فشل التحقق الأمني، حاول مجددًا${code}` : `Security check failed, try again${code}`
-            )
-            setCaptchaToken(null)
-            setCaptchaResetKey((k) => k + 1)
-            return
-          }
+      if (TURNSTILE_SITE_KEY) {
+        if (!captchaToken) {
+          toast.error(isRtl ? "أكمل التحقق الأمني أولاً" : "Complete the security check first")
+          return
         }
+        const res = await fetch("/api/auth/captcha-verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: captchaToken }),
+        })
+        const captchaResult = await res.json()
+        if (!captchaResult?.success) {
+          const code = captchaResult?.error ? ` (${captchaResult.error})` : ""
+          toast.error(
+            isRtl ? `فشل التحقق الأمني، حاول مجددًا${code}` : `Security check failed, try again${code}`
+          )
+          setCaptchaToken(null)
+          setCaptchaResetKey((k) => k + 1)
+          return
+        }
+      }
+      if (mode === "register") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -244,10 +244,8 @@ export default function AuthPage() {
       }
     } catch (err: any) {
       toast.error(friendlyError(err))
-      if (mode === "register") {
-        setCaptchaToken(null)
-        setCaptchaResetKey((k) => k + 1)
-      }
+      setCaptchaToken(null)
+      setCaptchaResetKey((k) => k + 1)
     } finally {
       setLoading(false)
     }
@@ -515,13 +513,13 @@ export default function AuthPage() {
                     </div>
                   )}
 
-                  {mode === "register" && (
+                  {(mode === "login" || mode === "register") && (
                     <Turnstile onToken={setCaptchaToken} resetKey={captchaResetKey} className="w-full [&>iframe]:w-full" />
                   )}
 
                   <button
                     type="submit"
-                    disabled={loading || (mode === "register" && !!TURNSTILE_SITE_KEY && !captchaToken)}
+                    disabled={loading}
                     className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
                   >
                     {loading ? t("common.loading")?.replace("...", "") || "Loading..." : mode === "login" ? t("login_btn") : t("register_btn")}

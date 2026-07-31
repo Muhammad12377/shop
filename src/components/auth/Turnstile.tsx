@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 declare global {
   interface Window {
@@ -41,15 +41,18 @@ export default function Turnstile({ onToken, resetKey = 0, className }: Turnstil
   const widgetIdRef = useRef<string | null>(null)
   const onTokenRef = useRef(onToken)
   onTokenRef.current = onToken
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading")
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     if (!SITE_KEY) return
-
+    setStatus("loading")
     let cancelled = false
 
     loadTurnstileScript()
       .then(() => {
         if (cancelled || !containerRef.current || !window.turnstile) return
+        setStatus("ready")
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: SITE_KEY,
           callback: (token: string) => onTokenRef.current(token),
@@ -57,7 +60,9 @@ export default function Turnstile({ onToken, resetKey = 0, className }: Turnstil
           "error-callback": () => onTokenRef.current(null),
         })
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setStatus("error")
+      })
 
     return () => {
       cancelled = true
@@ -66,7 +71,7 @@ export default function Turnstile({ onToken, resetKey = 0, className }: Turnstil
         widgetIdRef.current = null
       }
     }
-  }, [])
+  }, [reload])
 
   useEffect(() => {
     if (resetKey > 0 && widgetIdRef.current && window.turnstile) {
@@ -76,5 +81,29 @@ export default function Turnstile({ onToken, resetKey = 0, className }: Turnstil
 
   if (!SITE_KEY) return null
 
-  return <div ref={containerRef} className={className} />
+  return (
+    <div>
+      {status === "loading" && (
+        <div className="py-2.5 text-center text-xs text-zinc-400 animate-pulse">
+          جارٍ تحميل التحقق الأمني...
+        </div>
+      )}
+      {status === "error" && (
+        <div className="py-2.5 text-center text-xs text-red-500">
+          تعذر تحميل التحقق الأمني.
+          <button
+            type="button"
+            onClick={() => {
+              scriptPromise = null
+              setReload((r) => r + 1)
+            }}
+            className="ml-2 text-accent font-medium hover:underline"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      )}
+      <div ref={containerRef} className={className} />
+    </div>
+  )
 }
