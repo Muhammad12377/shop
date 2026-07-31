@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from "next-intl"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import { MapPin, Plus, Edit2, Trash2, Star, X } from "lucide-react"
-import { PHONE_CODES, splitPhone } from "@/lib/phone-codes"
+import { PHONE_CODES, splitPhone, validatePhone, PHONE_LENGTHS } from "@/lib/phone-codes"
 import type { Address } from "@/types"
 
 export default function AddressesPage() {
@@ -72,17 +72,39 @@ export default function AddressesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { toast.error("Not logged in"); setSaving(false); return }
 
+    const phoneResult = validatePhone(phoneCode, form.phone)
+    if (!phoneResult.valid) {
+      const expected = PHONE_LENGTHS[phoneCode]
+      const msg =
+        phoneResult.error === "phone_length"
+          ? isRtl
+            ? `رقم الهاتف يجب أن يتكون من ${expected} أرقام`
+            : `Phone number must be ${expected} digits`
+          : phoneResult.error === "phone_prefix"
+            ? isRtl
+              ? "رقم الهاتف السوري يجب أن يبدأ بـ 9"
+              : "Syrian phone numbers must start with 9"
+            : isRtl
+              ? "يرجى إدخال رقم هاتف صحيح"
+              : "Please enter a valid phone number"
+      toast.error(msg)
+      setSaving(false)
+      return
+    }
+    const cleanPhone = phoneResult.cleaned!
+    const savedPhone = phoneCode + cleanPhone
+
     if (editingAddress) {
       const { error } = await supabase
         .from("addresses")
-        .update({ ...form, phone: phoneCode + form.phone })
+        .update({ ...form, phone: savedPhone })
         .eq("id", editingAddress.id)
       if (error) { toast.error(error.message); setSaving(false); return }
       toast.success("Address updated")
     } else {
       const { error } = await supabase
         .from("addresses")
-        .insert({ ...form, phone: phoneCode + form.phone, user_id: user.id })
+        .insert({ ...form, phone: savedPhone, user_id: user.id })
       if (error) { toast.error(error.message); setSaving(false); return }
       toast.success("Address added")
     }

@@ -31,6 +31,8 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [newStatus, setNewStatus] = useState("")
@@ -43,6 +45,8 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
     try {
       const params = new URLSearchParams()
       if (statusFilter !== "all") params.set("status", statusFilter)
+      if (dateFrom) params.set("from", dateFrom)
+      if (dateTo) params.set("to", dateTo)
       if (search) params.set("search", search)
       const res = await fetch(`/api/admin/orders?${params}`)
       const data = await res.json()
@@ -52,7 +56,7 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, search, isRtl])
+  }, [statusFilter, search, dateFrom, dateTo, isRtl])
 
   useEffect(() => {
     setLoading(true)
@@ -109,6 +113,23 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
             </option>
           ))}
         </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            title={isRtl ? "من تاريخ" : "From date"}
+            className="px-3 py-2.5 bg-white border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+          />
+          <span className="text-zinc-400 text-sm">{isRtl ? "إلى" : "to"}</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            title={isRtl ? "إلى تاريخ" : "To date"}
+            className="px-3 py-2.5 bg-white border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+          />
+        </div>
       </div>
 
       {loading ? (

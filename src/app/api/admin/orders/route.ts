@@ -12,11 +12,20 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const status = url.searchParams.get("status")
     const search = url.searchParams.get("search")
+    const from = url.searchParams.get("from")
+    const to = url.searchParams.get("to")
 
     let query = supabase.from("orders").select("*").order("created_at", { ascending: false })
 
     if (status && status !== "all") {
       query = query.eq("status", status)
+    }
+
+    if (from) {
+      query = query.gte("created_at", `${from}T00:00:00`)
+    }
+    if (to) {
+      query = query.lte("created_at", `${to}T23:59:59.999`)
     }
 
     const { data, error } = await query

@@ -10,7 +10,7 @@ import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import { CreditCard, MapPin, Phone, User, FileText, Ticket, Plus, X, ChevronDown } from "lucide-react"
 import { colorLabel } from "@/lib/colors"
-import { PHONE_CODES, splitPhone } from "@/lib/phone-codes"
+import { PHONE_CODES, splitPhone, validatePhone, PHONE_LENGTHS } from "@/lib/phone-codes"
 import type { Address, Coupon } from "@/types"
 
 export default function CheckoutPage() {
@@ -189,6 +189,26 @@ export default function CheckoutPage() {
         return
       }
 
+      const phoneResult = validatePhone(phoneCode, form.phone)
+      if (!phoneResult.valid) {
+        const expected = PHONE_LENGTHS[phoneCode]
+        const msg =
+          phoneResult.error === "phone_length"
+            ? isRtl
+              ? `رقم الهاتف يجب أن يتكون من ${expected} أرقام`
+              : `Phone number must be ${expected} digits`
+            : phoneResult.error === "phone_prefix"
+              ? isRtl
+                ? "رقم الهاتف السوري يجب أن يبدأ بـ 9"
+                : "Syrian phone numbers must start with 9"
+              : isRtl
+                ? "يرجى إدخال رقم هاتف صحيح"
+                : "Please enter a valid phone number"
+        toast.error(msg)
+        return
+      }
+      const cleanPhone = phoneResult.cleaned!
+
       const orderItems = items.map((item) => ({
         product_id: item.product_id,
         product_name: isRtl ? item.name_ar : item.name_en,
@@ -235,7 +255,7 @@ export default function CheckoutPage() {
           coupon_code: appliedCoupon?.code || null,
           total: grandTotal,
           full_name: form.full_name,
-          phone: phoneCode + form.phone.trim().replace(/^0+/, ""),
+          phone: phoneCode + cleanPhone,
           address: form.address,
           city: form.city,
           shipping_country: selectedCountry ? (isRtl ? selectedCountry.name_ar : selectedCountry.name_en) : null,

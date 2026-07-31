@@ -22,3 +22,42 @@ export function splitPhone(phone: string): { code: string; number: string } {
   const match = phone.match(/^(\+\d{1,3})(.*)$/)
   return match ? { code: match[1], number: match[2] } : { code: "+963", number: phone }
 }
+
+export const PHONE_LENGTHS: Record<string, number> = {
+  "+963": 9,
+  "+966": 9,
+  "+971": 9,
+  "+962": 9,
+  "+964": 10,
+  "+965": 8,
+  "+973": 8,
+  "+974": 8,
+  "+968": 8,
+  "+970": 9,
+  "+961": 8,
+  "+20": 10,
+  "+90": 10,
+  "+1": 10,
+  "+44": 10,
+  "+49": 11,
+  "+33": 9,
+}
+
+export function validatePhone(
+  code: string,
+  number: string
+): { valid: boolean; error?: "phone_required" | "unknown_code" | "phone_length" | "phone_prefix"; cleaned?: string } {
+  const digits = number.replace(/\D/g, "").replace(/^0+/, "")
+  if (!digits) return { valid: false, error: "phone_required" }
+
+  const expected = PHONE_LENGTHS[code]
+  if (!expected) return { valid: false, error: "unknown_code" }
+
+  if (digits.length !== expected) return { valid: false, error: "phone_length" }
+
+  if (code === "+963" && !digits.startsWith("9")) {
+    return { valid: false, error: "phone_prefix" }
+  }
+
+  return { valid: true, cleaned: digits }
+}
