@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
+import { notifyAdmin } from "@/lib/telegram"
 
 async function applyStock(supabase: any, items: any[], sign: 1 | -1) {
   for (const item of items || []) {
@@ -60,6 +61,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (status === "confirmed" && prev !== "confirmed") {
       await applyStock(supabase, order.items, -1)
+      const seen = new Set<string>()
+      for (const item of order.items || []) {
+        if (!item?.product_id || seen.has(item.product_id)) continue
+        seen.add(item.product_id)
+        const { data: p } = await supabase
+          .from("products")
+          .select("stock, name_ar, name_en")
+          .eq("id", item.product_id)
+          .single()
+        if (p && Number(p.stock) <= 5) {
+          await notifyAdmin({
+            type: "low_stock",
+            product: p.name_ar || p.name_en || item.product_id,
+            stock: Number(p.stock),
+          })
+        }
+      }
     }
 
     if (status === "cancelled" && prev === "confirmed") {
@@ -74,6 +92,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         created_by: user.id,
       })
     }
+
+    await notifyAdmin({ type: "order_status", id, status })
 
     return NextResponse.json({ success: true })
   } catch {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
 import { rateLimit } from "@/lib/rate-limit"
+import { notifyAdmin } from "@/lib/telegram"
 import type { ApiResponse } from "@/types"
 
 async function requireAuth() {
@@ -171,6 +172,20 @@ export async function POST(request: NextRequest) {
   })
 
   await auth.supabase.from("cart_items").delete().eq("user_id", auth.user.id)
+
+  await notifyAdmin({
+    type: "new_order",
+    id: order.id,
+    full_name: order.full_name,
+    phone: order.phone,
+    total: order.total,
+    items: order.items,
+    address: order.address,
+    city: order.city,
+    shipping_country: order.shipping_country,
+    shipping_zone: order.shipping_zone,
+    notes: order.notes,
+  })
 
   return NextResponse.json({ success: true, data: order } satisfies ApiResponse)
 }

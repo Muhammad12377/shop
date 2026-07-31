@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
+import { notifyAdmin } from "@/lib/telegram"
 import type { ApiResponse } from "@/types"
 
 async function requireAuth() {
@@ -57,5 +58,20 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ success: false, error: error.message } satisfies ApiResponse, { status: 500 })
+
+  const { data: product } = await auth.supabase
+    .from("products")
+    .select("name_ar, name_en")
+    .eq("id", body.product_id)
+    .single()
+
+  await notifyAdmin({
+    type: "new_review",
+    product: product?.name_ar || product?.name_en || "منتج",
+    rating: body.rating,
+    comment: body.comment || null,
+    user: auth.user.email || null,
+  })
+
   return NextResponse.json({ success: true, data } satisfies ApiResponse)
 }

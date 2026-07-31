@@ -264,6 +264,11 @@ export default function CheckoutPage() {
       })
 
       clearCart()
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "new_order", order_id: order.id }),
+      }).catch(() => {})
       toast.success(t("order_confirmed"))
       router.push(`/order-confirmed?id=${order.id}`)
     } catch (err: any) {

@@ -157,6 +157,11 @@ export default function AuthPage() {
         if (createdInThisFlow) {
           if (password) await supabase.auth.updateUser({ password })
           if (name) await supabase.auth.updateUser({ data: { full_name: name } })
+          fetch("/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "new_user", email: otpEmail, name: name || null }),
+          }).catch(() => {})
         }
         toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
         router.push("/")

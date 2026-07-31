@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
+import { notifyAdmin } from "@/lib/telegram"
 import type { ApiResponse } from "@/types"
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -40,6 +41,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       note: "Cancelled by customer",
       created_by: user.id,
     })
+
+    await notifyAdmin({ type: "order_cancelled", id })
 
     return NextResponse.json({ success: true } satisfies ApiResponse)
   } catch {
