@@ -33,6 +33,15 @@ export async function POST(req: Request) {
     const { category: _category, ...body } = await req.json()
     const slug = body.name_en?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `product-${Date.now()}`
 
+    if (Array.isArray(body.sizes)) {
+      const sizeStock: Record<string, number> = { ...(body.size_stock || {}) }
+      for (const s of body.sizes) {
+        if (!(s in sizeStock)) sizeStock[s] = 0
+      }
+      body.size_stock = sizeStock
+      body.stock = Object.values(sizeStock).reduce((a, b) => a + (Number(b) || 0), 0)
+    }
+
     const { data, error } = await supabase
       .from("products")
       .insert({ ...body, slug })

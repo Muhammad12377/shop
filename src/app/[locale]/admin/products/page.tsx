@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
-import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon, Layers } from "lucide-react"
+import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Product, ProductCategory, Media } from "@/types"
 import { colorBackground, colorLabel } from "@/lib/colors"
@@ -45,7 +45,6 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [sizeInput, setSizeInput] = useState("")
   const [colorInput, setColorInput] = useState("")
-  const [combinePick, setCombinePick] = useState<string[]>([])
   const [imageInput, setImageInput] = useState("")
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
@@ -87,15 +86,21 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ ...defaultProduct })
+    setForm({ ...defaultProduct, size_stock: {} })
     setModalOpen(true)
   }
 
   const openEdit = (product: Product) => {
     setEditing(product)
-    setForm({ ...product })
+    const sizeStock: Record<string, number> = { ...(product.size_stock || {}) }
+    for (const s of product.sizes || []) {
+      if (!(s in sizeStock)) sizeStock[s] = 0
+    }
+    setForm({ ...product, size_stock: sizeStock })
     setModalOpen(true)
   }
+
+  const totalStock = Object.values(form.size_stock || {}).reduce((a, b) => a + b, 0)
 
   const handleSave = async () => {
     setSaving(true)
@@ -105,7 +110,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, stock: totalStock }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -167,24 +172,24 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   const addSize = () => {
     if (sizeInput && !(form.sizes || []).includes(sizeInput)) {
-      setForm({ ...form, sizes: [...(form.sizes || []), sizeInput] })
+      const sizeStock = { ...(form.size_stock || {}), [sizeInput]: 0 }
+      setForm({ ...form, sizes: [...(form.sizes || []), sizeInput], size_stock: sizeStock })
       setSizeInput("")
     }
   }
 
   const removeSize = (s: string) => {
-    setForm({ ...form, sizes: (form.sizes || []).filter((x) => x !== s) })
+    const sizeStock = { ...(form.size_stock || {}) }
+    delete sizeStock[s]
+    setForm({ ...form, sizes: (form.sizes || []).filter((x) => x !== s), size_stock: sizeStock })
   }
 
-  const addColor = () => {
-    if (colorInput && !(form.colors || []).includes(colorInput)) {
-      setForm({ ...form, colors: [...(form.colors || []), colorInput] })
-      setColorInput("")
-    }
+  const setSizeQty = (s: string, qty: number) => {
+    setForm({ ...form, size_stock: { ...(form.size_stock || {}), [s]: Math.max(0, qty) } })
   }
 
-  const removeColor = (c: string) => {
-    setForm({ ...form, colors: (form.colors || []).filter((x) => x !== c) })
+  const setColor = (c: string) => {
+    setForm({ ...form, colors: [c] })
   }
 
   const addImage = () => {
@@ -431,13 +436,10 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "المخزون" : "Stock"}</label>
-                  <input
-                    type="number"
-                    value={form.stock || 0}
-                    onChange={(e) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
-                  />
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "المخزون الكلي (تلقائي)" : "Total Stock (auto)"}</label>
+                  <div className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-semibold text-zinc-700">
+                    {totalStock}
+                  </div>
                 </div>
               </div>
 
@@ -458,13 +460,27 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "المقاسات" : "Sizes"}</label>
-                <div className="flex gap-2 mb-2 flex-wrap">
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
+                  {isRtl ? "المقاسات والكمية لكل مقاس" : "Sizes and quantity per size"}
+                </label>
+                <div className="space-y-2 mb-3">
                   {(form.sizes || []).map((s) => (
-                    <span key={s} className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-100 rounded-md text-xs">
-                      {s}
-                      <button onClick={() => removeSize(s)} className="cursor-pointer"><X className="w-3 h-3" /></button>
-                    </span>
+                    <div key={s} className="flex items-center gap-2">
+                      <span className="w-16 text-center px-3 py-2 bg-zinc-100 rounded-lg text-sm font-medium">
+                        {s}
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.size_stock?.[s] ?? 0}
+                        onChange={(e) => setSizeQty(s, parseInt(e.target.value) || 0)}
+                        className="flex-1 px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+                        placeholder={isRtl ? "عدد القطع" : "Quantity"}
+                      />
+                      <button onClick={() => removeSize(s)} className="p-2 hover:bg-red-50 rounded-lg cursor-pointer">
+                        <X className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
                   ))}
                 </div>
                 <div className="flex gap-2">
@@ -483,13 +499,15 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">{isRtl ? "الألوان (اضغط على اللون للإضافة)" : "Colors (click a color to add)"}</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
+                  {isRtl ? "اللون (لون واحد فقط — الألوان الأخرى تُضاف كمنتج منفصل بنفس الاسم)" : "Color (single color — other colors are added as a separate product with the same name)"}
+                </label>
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {(form.colors || []).map((c) => (
                     <span key={c} className="inline-flex items-center gap-1.5 px-2 py-1 bg-zinc-100 rounded-md text-xs">
                       <span className="w-4 h-4 rounded-full inline-block border border-zinc-200" style={{ background: colorBackground(c) }} />
                       {colorLabel(c)}
-                      <button onClick={() => removeColor(c)} className="cursor-pointer"><X className="w-3 h-3" /></button>
+                      <button onClick={() => setColor("")} className="cursor-pointer"><X className="w-3 h-3" /></button>
                     </span>
                   ))}
                 </div>
@@ -498,13 +516,9 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                     <button
                       key={c}
                       type="button"
-                      onClick={() => {
-                        if (!(form.colors || []).includes(c)) {
-                          setForm({ ...form, colors: [...(form.colors || []), c] })
-                        }
-                      }}
+                      onClick={() => setColor(c)}
                       className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
-                        (form.colors || []).includes(c) ? "border-[#f97316] scale-110" : "border-zinc-200"
+                        (form.colors || [])[0] === c ? "border-[#f97316] scale-110" : "border-zinc-200"
                       }`}
                       style={{ backgroundColor: c }}
                       title={c}
@@ -515,74 +529,23 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   <input
                     type="color"
                     value={colorInput || "#000000"}
-                    onChange={(e) => setColorInput(e.target.value)}
+                    onChange={(e) => { setColorInput(e.target.value); setColor(e.target.value) }}
                     className="w-10 h-10 p-0.5 border border-zinc-200 rounded-lg cursor-pointer"
                   />
                   <input
                     type="text"
                     value={colorInput}
-                    onChange={(e) => setColorInput(e.target.value)}
+                    onChange={(e) => { setColorInput(e.target.value); setColor(e.target.value) }}
                     placeholder={isRtl ? "كود اللون #hex" : "Color code #hex"}
                     className="flex-1 px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                   />
                   <button
                     type="button"
-                    onClick={addColor}
+                    onClick={() => colorInput && setColor(colorInput)}
                     className="px-3 py-2 bg-[#f97316] text-white rounded-lg text-sm hover:bg-[#fb923c] cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
-                </div>
-
-                <div className="mt-4 p-3 bg-zinc-50 rounded-xl border border-zinc-200">
-                  <p className="flex items-center gap-1.5 text-sm font-medium text-zinc-700 mb-2">
-                    <Layers className="w-4 h-4 text-[#f97316]" />
-                    {isRtl ? "لون مدمج (دائرة بأكثر من لون)" : "Combined color (circle with multiple colors)"}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {presetColors.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          setCombinePick((prev) =>
-                            prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c].slice(0, 4)
-                          )
-                        }}
-                        className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
-                          combinePick.includes(c) ? "border-blue-500 scale-110" : "border-zinc-200"
-                        }`}
-                        style={{ backgroundColor: c }}
-                        title={c}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="w-10 h-10 rounded-full border-2 border-zinc-300 inline-block"
-                      style={{ background: combinePick.length > 1 ? colorBackground(combinePick.join("|")) : "#fafafa" }}
-                      title={combinePick.join("|")}
-                    />
-                    <p className="text-xs text-zinc-500 flex-1">
-                      {combinePick.length < 2
-                        ? isRtl ? "اختر لونين أو أكثر ثم اضغط دمج" : "Pick 2+ colors, then click combine"
-                        : `${combinePick.length} ${isRtl ? "ألوان محددة" : "colors selected"}`}
-                    </p>
-                    <button
-                      type="button"
-                      disabled={combinePick.length < 2}
-                      onClick={() => {
-                        const combined = combinePick.join("|")
-                        if (!(form.colors || []).includes(combined)) {
-                          setForm({ ...form, colors: [...(form.colors || []), combined] })
-                        }
-                        setCombinePick([])
-                      }}
-                      className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      {isRtl ? "دمج الألوان" : "Combine"}
-                    </button>
-                  </div>
                 </div>
               </div>
 

@@ -41,6 +41,7 @@ export type Product = {
   sizes: string[]
   colors: string[]
   stock: number
+  size_stock?: Record<string, number>
   slug: string
   featured: boolean
   active: boolean

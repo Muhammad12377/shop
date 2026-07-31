@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   const productIds = [...new Set(body.items.map((i: any) => i.product_id))]
   const { data: stockRows } = await auth.supabase
     .from("products")
-    .select("id, stock, price, name_en, name_ar")
+    .select("id, stock, size_stock, price, name_en, name_ar")
     .in("id", productIds)
   const stockMap: Record<string, any> = {}
   for (const p of stockRows || []) stockMap[p.id] = p
@@ -60,9 +60,10 @@ export async function POST(request: NextRequest) {
     if (!product) {
       return NextResponse.json({ success: false, error: "A product in your cart is no longer available" } satisfies ApiResponse, { status: 400 })
     }
-    if (Number(item.quantity) > Number(product.stock)) {
+    const sizeStock = Number(product.size_stock?.[item.size] ?? product.stock)
+    if (Number(item.quantity) > sizeStock) {
       return NextResponse.json(
-        { success: false, error: `Only ${product.stock} in stock for "${product.name_en}"` } satisfies ApiResponse,
+        { success: false, error: `Only ${sizeStock} in stock for "${product.name_en}" size ${item.size || "-"}` } satisfies ApiResponse,
         { status: 400 }
       )
     }
@@ -162,9 +163,17 @@ export async function POST(request: NextRequest) {
 
   for (const item of body.items) {
     const product = stockMap[item.product_id]
+    const sizeStock = { ...(product.size_stock || {}) }
+    let newStock = Number(product.stock)
+    if (item.size && sizeStock[item.size] != null) {
+      sizeStock[item.size] = Math.max(0, Number(sizeStock[item.size]) - Number(item.quantity))
+      newStock = Object.values(sizeStock).reduce((a: number, b: any) => a + (Number(b) || 0), 0)
+    } else {
+      newStock = Math.max(0, Number(product.stock) - Number(item.quantity))
+    }
     await auth.supabase
       .from("products")
-      .update({ stock: Math.max(0, Number(product.stock) - Number(item.quantity)) })
+      .update({ size_stock: sizeStock, stock: newStock })
       .eq("id", item.product_id)
   }
 

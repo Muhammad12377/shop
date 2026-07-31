@@ -74,6 +74,22 @@ export const getCachedProduct = unstable_cache(
   { tags: ["products", "home"], revalidate: 60 }
 )
 
+export const getCachedSiblingProducts = unstable_cache(
+  async (id: string, nameEn: string, nameAr: string) => {
+    const name = nameEn || nameAr
+    if (!name) return []
+    const { data } = await client
+      .from("products")
+      .select("id, name_en, name_ar, colors, images, slug")
+      .eq("active", true)
+      .neq("id", id)
+      .or(`name_en.eq.${name.replace(/'/g, "")},name_ar.eq.${name.replace(/'/g, "")}`)
+    return data || []
+  },
+  ["product-siblings"],
+  { tags: ["products", "home"], revalidate: 60 }
+)
+
 export const getCachedProducts = unstable_cache(
   async (opts: { q?: string; categoryId?: string; sort?: string; page: number; limit: number }) => {
     const search = opts.q?.replace(/[%_]/g, "").trim()

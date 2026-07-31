@@ -16,6 +16,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (body.name_en) {
       updateData.slug = body.name_en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
     }
+    if (Array.isArray(body.sizes)) {
+      const sizeStock: Record<string, number> = { ...(body.size_stock || {}) }
+      for (const s of body.sizes) {
+        if (!(s in sizeStock)) sizeStock[s] = 0
+      }
+      updateData.size_stock = sizeStock
+      updateData.stock = Object.values(sizeStock).reduce((a, b) => a + (Number(b) || 0), 0)
+    }
 
     const { data, error } = await supabase.from("products").update(updateData).eq("id", id).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -11,14 +11,17 @@ import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { ShoppingCart, Heart, Check, Package, Truck, Shield, Play } from "lucide-react"
-import { colorBackground } from "@/lib/colors"
+import { colorBackground, colorLabel } from "@/lib/colors"
 
-export default function ProductView({ product }: { product: any }) {
+export default function ProductView({ product, siblings }: { product: any; siblings?: any[] }) {
   const t = useTranslations("product")
   const params = useParams<{ locale: string; id: string }>()
   const [related, setRelated] = useState<any[]>([])
-  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || "")
-  const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || "")
+  const hasPerSize = !!(product?.size_stock && Object.keys(product.size_stock).length > 0)
+  const sizeQty = (s: string) => (hasPerSize ? Number(product?.size_stock?.[s] ?? 0) : product?.stock ?? 0)
+  const initialSize =
+    (product?.sizes || []).find((s: string) => sizeQty(s) > 0) || product?.sizes?.[0] || ""
+  const [selectedSize, setSelectedSize] = useState(initialSize)
   const [selectedImage, setSelectedImage] = useState(0)
   const [showVideo, setShowVideo] = useState(false)
   const [inWishlist, setInWishlist] = useState(false)
@@ -77,10 +80,10 @@ export default function ProductView({ product }: { product: any }) {
       price: product.price,
       image: product.images?.[0] || "",
       size: selectedSize,
-      color: selectedColor,
+      color: product.colors?.[0] || "",
       quantity: 1,
       slug: product.slug,
-      stock: product.stock,
+      stock: hasPerSize ? sizeQty(selectedSize) : product.stock,
     })
     toast.success(t("add_to_cart"))
   }
@@ -209,40 +212,90 @@ export default function ProductView({ product }: { product: any }) {
             <div className="mb-6">
               <p className="text-sm font-medium mb-3">{t("sizes")}</p>
               <div className="flex flex-wrap gap-2">
-                {(product.sizes || []).map((size: string) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 rounded-xl border text-sm transition-colors ${
-                      selectedSize === size
-                        ? "border-accent bg-accent/5 text-accent font-medium"
-                        : "border-zinc-200 hover:border-accent hover:text-accent"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {(product.sizes || []).map((size: string) => {
+                  const qty = sizeQty(size)
+                  return (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      disabled={qty <= 0}
+                      className={`px-4 py-2 rounded-xl border text-sm transition-colors ${
+                        selectedSize === size
+                          ? "border-accent bg-accent/5 text-accent font-medium"
+                          : "border-zinc-200 hover:border-accent hover:text-accent"
+                      } ${qty <= 0 ? "opacity-40 cursor-not-allowed line-through" : ""}`}
+                      title={qty <= 0 ? (isRtl ? "غير متوفر" : "Out of stock") : undefined}
+                    >
+                      {size}
+                      {hasPerSize && (
+                        <span className={`block text-[10px] ${qty <= 0 ? "text-red-400" : "text-zinc-400"}`}>
+                          {qty > 0 ? (isRtl ? `متبقي ${qty}` : `${qty} left`) : isRtl ? "نفد" : "out"}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
             <div className="mb-8">
               <p className="text-sm font-medium mb-3">{t("colors")}</p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 {(product.colors || []).map((color: string) => (
-                  <button
+                  <span
                     key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`w-8 h-8 rounded-full border-2 transition-colors ${
-                      selectedColor === color ? "border-accent scale-110" : "border-zinc-200"
-                    }`}
+                    className="w-8 h-8 rounded-full border-2 border-accent scale-110"
                     style={{ background: colorBackground(color) }}
+                    title={colorLabel(color)}
                   />
                 ))}
+                {(siblings || []).map((sib: any) => {
+                  const sibColor = sib.colors?.[0]
+                  return (
+                    <Link
+                      key={sib.id}
+                      href={`/product/${sib.id}`}
+                      title={isRtl ? sib.name_ar : sib.name_en}
+                      className={`w-8 h-8 rounded-full border-2 transition-colors hover:scale-110 overflow-hidden ${
+                        sibColor ? "" : "flex items-center justify-center"
+                      } border-zinc-300 hover:border-accent relative`}
+                    >
+                      {sibColor ? (
+                        <span className="block w-full h-full" style={{ background: colorBackground(sibColor) }} />
+                      ) : sib.images?.[0] ? (
+                        <Image src={sib.images[0]} alt="" fill sizes="32px" className="object-cover" />
+                      ) : (
+                        <span className="text-[9px] text-zinc-400">{isRtl ? "لون" : "Color"}</span>
+                      )}
+                    </Link>
+                  )
+                })}
               </div>
+              <p className="text-xs text-zinc-400 mt-2">
+                {isRtl
+                  ? siblings?.length
+                    ? `متوفر بألوان أخرى: اضغط على اللون للانتقال للمنتج`
+                    : "هذا اللون هو المتوفر الوحيد"
+                  : siblings?.length
+                    ? "Available in other colors: click a color to view it"
+                    : "This is the only available color"}
+              </p>
             </div>
 
             <div className="flex items-center gap-3 mb-6">
-              {product.stock > 0 ? (
+              {selectedSize ? (
+                sizeQty(selectedSize) > 0 ? (
+                  <span className="flex items-center gap-1.5 text-sm text-green-600">
+                    <Check className="w-4 h-4" />
+                    {t("in_stock")}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-sm text-red-500">
+                    <Package className="w-4 h-4" />
+                    {t("out_of_stock")}
+                  </span>
+                )
+              ) : product.stock > 0 ? (
                 <span className="flex items-center gap-1.5 text-sm text-green-600">
                   <Check className="w-4 h-4" />
                   {t("in_stock")}
@@ -258,7 +311,7 @@ export default function ProductView({ product }: { product: any }) {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleAddToCart}
-                disabled={product.stock <= 0}
+                disabled={selectedSize ? sizeQty(selectedSize) <= 0 : product.stock <= 0}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
               >
                 <ShoppingCart className="w-5 h-5" />

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getCachedProduct } from "@/lib/home-data"
+import { getCachedProduct, getCachedSiblingProducts } from "@/lib/home-data"
 import ProductView from "./ProductView"
 
 export const revalidate = 60
@@ -26,5 +26,7 @@ export default async function ProductPage({ params }: Props) {
     notFound()
   }
 
-  return <ProductView product={product} />
+  const siblings = await getCachedSiblingProducts(id, product.name_en, product.name_ar)
+
+  return <ProductView product={product} siblings={siblings} />
 }

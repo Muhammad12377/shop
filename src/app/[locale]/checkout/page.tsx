@@ -96,9 +96,10 @@ export default function CheckoutPage() {
   const selectedZone = selectedCountry?.zones?.find((z: any) => z.id === selectedZoneId)
   const hasZones = (selectedCountry?.zones?.length || 0) > 0
   const freeShip = settings && subtotal >= (settings.free_shipping_min || 100)
+  const needZone = hasZones && !selectedZoneId
   const baseShipping = selectedZone
     ? Number(selectedZone.price)
-    : selectedCountry
+    : selectedCountry && !needZone
       ? Number(selectedCountry.price)
       : null
   const shippingFee = freeShip ? 0 : baseShipping
@@ -178,7 +179,7 @@ export default function CheckoutPage() {
       const productIds = [...new Set(orderItems.map((i) => i.product_id))]
       const { data: stockRows } = await supabase
         .from("products")
-        .select("id, stock, name_en, name_ar")
+        .select("id, stock, size_stock, name_en, name_ar")
         .in("id", productIds)
       const stockMap: Record<string, any> = {}
       for (const p of stockRows || []) stockMap[p.id] = p
@@ -189,11 +190,12 @@ export default function CheckoutPage() {
           toast.error(isRtl ? "أحد المنتجات غير متوفر" : "A product is no longer available")
           return
         }
-        if (item.quantity > Number(product.stock)) {
+        const sizeStock = Number(product.size_stock?.[item.size] ?? product.stock)
+        if (item.quantity > sizeStock) {
           toast.error(
             isRtl
-              ? `لا يمكن طلب أكثر من ${product.stock} من "${product.name_ar}" (المتوفر: ${product.stock})`
-              : `Cannot order more than ${product.stock} of "${product.name_en}" (in stock: ${product.stock})`
+              ? `لا يمكن طلب أكثر من ${sizeStock} من "${product.name_ar}" مقاس ${item.size} (المتوفر: ${sizeStock})`
+              : `Cannot order more than ${sizeStock} of "${product.name_en}" size ${item.size} (in stock: ${sizeStock})`
           )
           return
         }
@@ -241,9 +243,17 @@ export default function CheckoutPage() {
       for (const item of orderItems) {
         const product = stockMap[item.product_id]
         if (product) {
+          const sizeStock = { ...(product.size_stock || {}) }
+          let newStock = Number(product.stock)
+          if (item.size && sizeStock[item.size] != null) {
+            sizeStock[item.size] = Math.max(0, Number(sizeStock[item.size]) - item.quantity)
+            newStock = Object.values(sizeStock).reduce((a: number, b: any) => a + (Number(b) || 0), 0)
+          } else {
+            newStock = Math.max(0, Number(product.stock) - item.quantity)
+          }
           await supabase
             .from("products")
-            .update({ stock: Math.max(0, Number(product.stock) - item.quantity) })
+            .update({ size_stock: sizeStock, stock: newStock })
             .eq("id", item.product_id)
         }
       }
@@ -499,7 +509,9 @@ export default function CheckoutPage() {
                       <span className="text-green-600">{ct("free_shipping")}</span>
                     ) : shippingFee == null ? (
                       <span className="text-amber-600 text-xs font-medium">
-                        {isRtl ? "اختر الدولة لتحديد رسوم الشحن" : "Select a country to see shipping cost"}
+                        {!selectedCountryId
+                          ? isRtl ? "اختر الدولة لتحديد رسوم الشحن" : "Select a country to see shipping cost"
+                          : isRtl ? "اختر المحافظة لتحديد رسوم الشحن" : "Select a Governorate to see shipping cost"}
                       </span>
                     ) : (
                       `$${shippingFee.toFixed(2)}`

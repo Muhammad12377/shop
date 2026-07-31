@@ -38,13 +38,13 @@ export default async function LocaleLayout({ children, params }: Props) {
     notFound()
   }
 
-  const messages = await getMessages()
+  const messages = await getMessages({ locale })
   const isRtl = locale === "ar"
 
   return (
     <html lang={locale} dir={isRtl ? "rtl" : "ltr"} className={geist.className}>
       <body className="min-h-screen flex flex-col">
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
           <Toaster
             position={isRtl ? "top-left" : "top-right"}
