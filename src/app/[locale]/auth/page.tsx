@@ -6,10 +6,13 @@ import { useRouter } from "@/lib/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
+import Turnstile from "@/components/auth/Turnstile"
 import { Mail, Lock, User, Eye, EyeOff, Loader2, ShieldCheck, ArrowRight } from "lucide-react"
 
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
 type AuthMode = "login" | "register" | "otp" | "forgot" | "newpassword"
-type OtpOrigin = "register" | "forgot"
+type OtpOrigin = "register" | "forgot" | "login"
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -41,6 +44,12 @@ export default function AuthPage() {
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showNewPassword, setShowNewPassword] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
+
+  useEffect(() => {
+    setCaptchaToken(null)
+  }, [mode])
 
   useEffect(() => {
     if (window.location.search.includes("blocked=1")) setBlockedNotice(true)
@@ -94,6 +103,19 @@ export default function AuthPage() {
         setMode("newpassword")
         toast.success(isRtl ? "تم التحقق! أدخل كلمة مرور جديدة" : "Verified! Enter a new password")
       } else {
+        if (otpOrigin === "login") {
+          const { data: userData } = await supabase.auth.getUser()
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("blocked")
+            .eq("id", userData.user!.id)
+            .single()
+          if (profile?.blocked) {
+            await supabase.auth.signOut()
+            toast.error(isRtl ? "تم حظر حسابك" : "Your account has been blocked")
+            return
+          }
+        }
         toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
         router.push("/")
         router.refresh()
@@ -176,6 +198,24 @@ export default function AuthPage() {
 
     try {
       if (mode === "register") {
+        if (TURNSTILE_SITE_KEY) {
+          if (!captchaToken) {
+            toast.error(isRtl ? "أكمل التحقق الأمني" : "Complete the security check")
+            return
+          }
+          const res = await fetch("/api/auth/captcha-verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: captchaToken }),
+          })
+          const captchaResult = await res.json()
+          if (!captchaResult?.success) {
+            toast.error(isRtl ? "فشل التحقق الأمني، حاول مجددًا" : "Security check failed, try again")
+            setCaptchaToken(null)
+            setCaptchaResetKey((k) => k + 1)
+            return
+          }
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -470,9 +510,13 @@ export default function AuthPage() {
                     </div>
                   )}
 
+                  {mode === "register" && (
+                    <Turnstile onToken={setCaptchaToken} resetKey={captchaResetKey} className="w-full [&>iframe]:w-full" />
+                  )}
+
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || (mode === "register" && !!TURNSTILE_SITE_KEY && !captchaToken)}
                     className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
                   >
                     {loading ? t("common.loading")?.replace("...", "") || "Loading..." : mode === "login" ? t("login_btn") : t("register_btn")}
@@ -487,6 +531,22 @@ export default function AuthPage() {
                         className="block w-full mb-3 text-accent font-medium hover:underline"
                       >
                         {isRtl ? "نسيت كلمة المرور؟" : "Forgot password?"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!email.trim()) {
+                            toast.error(isRtl ? "أدخل بريدك الإلكتروني أولًا" : "Enter your email first")
+                            return
+                          }
+                          sendOtp(email.trim(), "login")
+                            .then(() => {
+                              toast.success(isRtl ? "أرسلنا رمز التحقق إلى بريدك" : "Verification code sent to your email")
+                            })
+                            .catch((err: any) => toast.error(err.message))
+                        }}
+                        className="block w-full mb-3 text-accent font-medium hover:underline"
+                      >
+                        {isRtl ? "الدخول برمز تحقق بدل كلمة المرور" : "Sign in with a code instead of a password"}
                       </button>
                       {t("no_account")}{" "}
                       <button onClick={() => setMode("register")} className="text-accent font-medium hover:underline">
