@@ -29,8 +29,9 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
   const toggleRole = async (user: UserProfile) => {
-    setTogglingId(user.id)
     const newRole = user.role === "admin" ? "user" : "admin"
+    if (!confirm(newRole === "admin" ? "Make this user an admin?" : "Remove admin role from this user?")) return
+    setTogglingId(user.id)
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
@@ -107,23 +108,30 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => toggleRole(u)}
-                        disabled={togglingId === u.id}
+                        disabled={togglingId === u.id || u.is_me}
+                        title={u.is_me ? "This is your own account" : undefined}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                          u.role === "admin"
-                            ? "bg-red-50 text-red-600 hover:bg-red-100"
-                            : "bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20"
+                          u.is_me
+                            ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                            : u.role === "admin"
+                              ? "bg-red-50 text-red-600 hover:bg-red-100"
+                              : "bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20"
                         } disabled:opacity-50`}
                       >
                         {togglingId === u.id ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : u.is_me ? (
+                          <Shield className="w-3 h-3" />
                         ) : u.role === "admin" ? (
                           <ShieldOff className="w-3 h-3" />
                         ) : (
                           <Shield className="w-3 h-3" />
                         )}
-                        {u.role === "admin"
-                          ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
-                          : isRtl ? "تعيين مدير" : "Make Admin"}
+                        {u.is_me
+                          ? isRtl ? "حسابك الحالي" : "Your account"
+                          : u.role === "admin"
+                            ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
+                            : isRtl ? "تعيين مدير" : "Make Admin"}
                       </button>
                     </td>
                   </tr>

@@ -11,7 +11,8 @@ export async function GET() {
 
     const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data || [])
+    const users = (data || []).map((u) => ({ ...u, is_me: u.id === user.id }))
+    return NextResponse.json(users)
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }

@@ -11,6 +11,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const body = await req.json()
+    if (body.role === "user" && id === user.id) {
+      return NextResponse.json({ error: "You cannot remove your own admin role" }, { status: 400 })
+    }
     const { data, error } = await supabase
       .from("profiles")
       .update(body)

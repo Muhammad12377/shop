@@ -13,6 +13,7 @@ export type UserProfile = {
   role: UserRole
   created_at: string
   updated_at?: string
+  is_me?: boolean
 }
 
 export type ProductCategory = {
