@@ -46,6 +46,7 @@ export default function AuthPage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const [otpSentAt, setOtpSentAt] = useState<string | null>(null)
 
   useEffect(() => {
     setCaptchaToken(null)
@@ -89,6 +90,24 @@ export default function AuthPage() {
     setMode("otp")
   }
 
+  const sendRegisterOtp = async (target: string, fullName: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email: target,
+      options: {
+        shouldCreateUser: true,
+        data: { full_name: fullName },
+      },
+    })
+    if (error) throw error
+    setOtpEmail(target)
+    setOtpCode("")
+    setOtpTimer(60)
+    setOtpOrigin("register")
+    setOtpSentAt(new Date().toISOString())
+    setMode("otp")
+  }
+
   const handleResendOtp = async () => {
     try {
       await sendOtp(otpEmail, otpOrigin)
@@ -107,7 +126,7 @@ export default function AuthPage() {
     setVerifying(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email: otpEmail,
         token: otpCode.trim(),
         type: "email",
@@ -117,6 +136,14 @@ export default function AuthPage() {
         setMode("newpassword")
         toast.success(isRtl ? "تم التحقق! أدخل كلمة مرور جديدة" : "Verified! Enter a new password")
       } else {
+        const createdInThisFlow =
+          data?.user?.created_at &&
+          otpSentAt &&
+          new Date(data.user.created_at).getTime() >= new Date(otpSentAt).getTime()
+        if (createdInThisFlow) {
+          if (password) await supabase.auth.updateUser({ password })
+          if (name) await supabase.auth.updateUser({ data: { full_name: name } })
+        }
         toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
         router.push("/")
         router.refresh()
@@ -220,14 +247,10 @@ export default function AuthPage() {
         }
       }
       if (mode === "register") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: name } },
-        })
-        if (error) throw error
-        await sendOtp(email, "register")
-        toast.success(isRtl ? "تم إنشاء الحساب! أدخل رمز التحقق المرسل إلى بريدك" : "Account created! Enter the code sent to your email")
+        await sendRegisterOtp(email, name)
+        toast.success(
+          isRtl ? "تم إنشاء الحساب! أدخل رمز التحقق المرسل إلى بريدك" : "Account created! Enter the code sent to your email"
+        )
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
