@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const status = url.searchParams.get("status")
     const search = url.searchParams.get("search")
 
-    let query = supabase.from("orders").select("*, items:order_items(*)").order("created_at", { ascending: false })
+    let query = supabase.from("orders").select("*").order("created_at", { ascending: false })
 
     if (status && status !== "all") {
       query = query.eq("status", status)
