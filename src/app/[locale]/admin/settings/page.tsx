@@ -23,6 +23,43 @@ const defaultSettings: StoreSettings = {
   hero_image_url: "",
 }
 
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+}: {
+  label: string
+  value: string | number
+  onChange: (v: string) => void
+  type?: string
+  placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-zinc-700 mb-1">{label}</label>
+      {type === "textarea" ? (
+        <textarea
+          value={value as string}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+        />
+      )}
+    </div>
+  )
+}
+
 export default function AdminSettingsPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
   const [locale, setLocale] = useState("en")
   const [form, setForm] = useState<StoreSettings>({ ...defaultSettings })
@@ -102,41 +139,6 @@ export default function AdminSettingsPage({ params: paramsPromise }: { params: P
       </div>
     )
   }
-
-  const Field = ({
-    label,
-    value,
-    onChange,
-    type = "text",
-    placeholder = "",
-  }: {
-    label: string
-    value: string | number
-    onChange: (v: string) => void
-    type?: string
-    placeholder?: string
-  }) => (
-    <div>
-      <label className="block text-sm font-medium text-zinc-700 mb-1">{label}</label>
-      {type === "textarea" ? (
-        <textarea
-          value={value as string}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          placeholder={placeholder}
-          className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
-        />
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
-        />
-      )}
-    </div>
-  )
 
   return (
     <div className="max-w-3xl">
