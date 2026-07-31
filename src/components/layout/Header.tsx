@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { ShoppingCart, Menu, X, Search, User, Package, Heart, ChevronDown, LogOut, LayoutDashboard } from "lucide-react"
+import { ShoppingCart, Menu, X, Search, User, Package, Heart, ChevronDown, LogOut, LayoutDashboard, Home, Globe } from "lucide-react"
 import { Link, usePathname, useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
@@ -48,6 +48,7 @@ export default function Header() {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
+    setMenuOpen(false)
     router.push("/")
     router.refresh()
   }
@@ -199,63 +200,139 @@ export default function Header() {
         {menuOpen && (
           <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setMenuOpen(false)} />
         )}
-        {menuOpen && (
-          <div className="relative z-40 md:hidden pb-4 border-t border-zinc-100 pt-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
-            <form onSubmit={handleSearch} className="relative mb-4">
+        <div
+          className={`fixed inset-y-0 start-0 z-40 w-[85%] max-w-xs bg-white shadow-2xl md:hidden flex flex-col transition-transform duration-300 ${
+            menuOpen ? "translate-x-0" : isRtl ? "translate-x-full" : "-translate-x-full"
+          } ${menuOpen ? "" : "pointer-events-none"}`}
+        >
+          <div className="flex items-center justify-between p-4 border-b border-zinc-100">
+            <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2">
+              <span className="text-lg font-bold tracking-tight">
+                <span className="text-accent">SNEAKERS</span>
+                <span className="text-primary"> CLUB</span>
+              </span>
+            </Link>
+            <button
+              onClick={() => setMenuOpen(false)}
+              className="p-2 -me-1 rounded-full hover:bg-zinc-100 transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-4 border-b border-zinc-100">
+            <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("search")}
-                className="w-full pl-8 pr-3 py-2 text-sm rounded-full bg-zinc-100 border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full pl-9 pr-3 py-2.5 text-sm rounded-full bg-zinc-100 border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
             </form>
-
-            <nav className="flex flex-col gap-2">
-              <Link href="/" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                {t("home")}
-              </Link>
-              <Link href="/products" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                {t("products")}
-              </Link>
-              <Link href="/cart" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                {t("cart")} ({cartCount})
-              </Link>
-              {user && (
-                <>
-                  <Link href="/account" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                    {t("account")}
-                  </Link>
-                  <Link href="/account/orders" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                    {t("orders")}
-                  </Link>
-                  <Link href="/account/wishlist" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                    {t("wishlist")}
-                  </Link>
-                  {profile?.role === "admin" && (
-                    <Link href="/admin" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                      {t("admin")}
-                    </Link>
-                  )}
-                </>
-              )}
-              <hr className="border-zinc-100 my-2" />
-              <Link href="/" locale={locale === "en" ? "ar" : "en"} className="py-2 text-sm font-medium text-left" onClick={() => setMenuOpen(false)}>
-                {t("language")}: {locale === "en" ? "العربية" : "English"}
-              </Link>
-              {user ? (
-                <button onClick={handleLogout} className="py-2 text-sm font-medium text-left text-red-500">
-                  {t("logout")}
-                </button>
-              ) : (
-                <Link href="/auth" className="py-2 text-sm font-medium text-accent" onClick={() => setMenuOpen(false)}>
-                  {t("login")}
-                </Link>
-              )}
-            </nav>
           </div>
-        )}
+
+          <nav className="flex-1 overflow-y-auto py-2">
+            <Link
+              href="/"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
+            >
+              <Home className="w-4 h-4 text-zinc-400 shrink-0" />
+              {t("home")}
+            </Link>
+            <Link
+              href="/products"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
+            >
+              <Package className="w-4 h-4 text-zinc-400 shrink-0" />
+              {t("products")}
+            </Link>
+            <Link
+              href="/cart"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
+            >
+              <ShoppingCart className="w-4 h-4 text-zinc-400 shrink-0" />
+              {t("cart")}
+              {cartCount > 0 && (
+                <span className="bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            {user && (
+              <>
+                <Link
+                  href="/account"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
+                >
+                  <User className="w-4 h-4 text-zinc-400 shrink-0" />
+                  {t("account")}
+                </Link>
+                <Link
+                  href="/account/orders"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
+                >
+                  <Package className="w-4 h-4 text-zinc-400 shrink-0" />
+                  {t("orders")}
+                </Link>
+                <Link
+                  href="/account/wishlist"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
+                >
+                  <Heart className="w-4 h-4 text-zinc-400 shrink-0" />
+                  {t("wishlist")}
+                </Link>
+                {profile?.role === "admin" && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-zinc-400 shrink-0" />
+                    {t("admin")}
+                  </Link>
+                )}
+              </>
+            )}
+          </nav>
+
+          <div className="border-t border-zinc-100 p-4 space-y-2">
+            <Link
+              href="/"
+              locale={locale === "en" ? "ar" : "en"}
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium hover:bg-zinc-50 rounded-xl transition-colors"
+            >
+              <Globe className="w-4 h-4 text-zinc-400 shrink-0" />
+              {t("language")}: {locale === "en" ? "العربية" : "English"}
+            </Link>
+            {user ? (
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                {t("logout")}
+              </button>
+            ) : (
+              <Link
+                href="/auth"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-full text-sm font-medium hover:bg-accent-light transition-colors"
+              >
+                {t("login")}
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   )
