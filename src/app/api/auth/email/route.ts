@@ -92,7 +92,6 @@ export async function POST(req: NextRequest) {
         <h2 style="color:#18181b;margin:0 0 12px">Your Sneakers Club verification code</h2>
         <p style="color:#52525b;margin:0 0 16px">Use this code to ${label}:</p>
         <p style="font-size:30px;font-weight:bold;letter-spacing:8px;color:#f97316;margin:0 0 20px">${token}</p>
-        ${link ? `<p style="margin:0 0 16px">Or <a href="${link}" style="color:#f97316">click here</a> to continue.</p>` : ""}
         <p style="color:#a1a1aa;font-size:12px;margin:0">This code expires shortly and can only be used once.</p>
       </div>`
     : `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px">
