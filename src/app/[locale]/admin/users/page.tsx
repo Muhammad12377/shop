@@ -105,7 +105,7 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
     <div>
       <h1 className="text-2xl font-bold mb-6">{isRtl ? "المستخدمين" : "Users"}</h1>
 
-      <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-xl border border-zinc-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50">
@@ -216,6 +216,100 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="md:hidden space-y-3">
+        {users.length === 0 ? (
+          <div className="bg-white rounded-xl border border-zinc-200 p-12 text-center text-zinc-400">
+            {isRtl ? "لا توجد نتائج" : "No results"}
+          </div>
+        ) : (
+          users.map((u) => (
+            <div key={u.id} className="bg-white rounded-xl border border-zinc-200 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{u.full_name || "-"}</p>
+                  <p className="text-sm text-zinc-500 truncate">{u.email}</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {new Date(u.created_at).toLocaleDateString(isRtl ? "ar" : "en-US")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      u.role === "admin"
+                        ? "bg-[#f97316]/10 text-[#f97316]"
+                        : "bg-zinc-100 text-zinc-600"
+                    }`}
+                  >
+                    {u.role === "admin"
+                      ? isRtl ? "مدير" : "Admin"
+                      : isRtl ? "مستخدم" : "User"}
+                  </span>
+                  {u.blocked && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      {isRtl ? "محظور" : "Blocked"}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => openConfirm(u, u.blocked ? "unblock" : "block")}
+                  disabled={togglingId === u.id || u.is_me}
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
+                    u.is_me
+                      ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                      : u.blocked
+                        ? "bg-green-50 text-green-700 hover:bg-green-100"
+                        : "bg-red-50 text-red-600 hover:bg-red-100"
+                  }`}
+                >
+                  {togglingId === u.id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : u.is_me ? (
+                    <Ban className="w-3 h-3" />
+                  ) : u.blocked ? (
+                    <CheckCircle2 className="w-3 h-3" />
+                  ) : (
+                    <Ban className="w-3 h-3" />
+                  )}
+                  {u.is_me
+                    ? isRtl ? "حسابك الحالي" : "Your account"
+                    : u.blocked
+                      ? isRtl ? "فك الحظر" : "Unblock"
+                      : isRtl ? "حظر الحساب" : "Block"}
+                </button>
+                <button
+                  onClick={() => openConfirm(u, u.role === "admin" ? "demote" : "promote")}
+                  disabled={togglingId === u.id || u.is_me}
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
+                    u.is_me
+                      ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                      : u.role === "admin"
+                        ? "bg-red-50 text-red-600 hover:bg-red-100"
+                        : "bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20"
+                  }`}
+                >
+                  {togglingId === u.id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : u.is_me ? (
+                    <Shield className="w-3 h-3" />
+                  ) : u.role === "admin" ? (
+                    <ShieldOff className="w-3 h-3" />
+                  ) : (
+                    <Shield className="w-3 h-3" />
+                  )}
+                  {u.is_me
+                    ? isRtl ? "حسابك الحالي" : "Your account"
+                    : u.role === "admin"
+                      ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
+                      : isRtl ? "تعيين مدير" : "Make Admin"}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {confirming && (

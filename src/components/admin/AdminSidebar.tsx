@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
 import {
   LayoutDashboard,
   Package,
@@ -14,7 +13,6 @@ import {
   Image,
   Truck,
   ArrowLeftFromLine,
-  Menu,
   X,
 } from "lucide-react"
 
@@ -30,9 +28,16 @@ const navItems = [
   { href: "/media", labelEn: "Media Library", labelAr: "مكتبة الصور", icon: Image },
 ]
 
-export default function AdminSidebar({ locale }: { locale: string }) {
+export default function AdminSidebar({
+  locale,
+  mobileOpen,
+  onClose,
+}: {
+  locale: string
+  mobileOpen: boolean
+  onClose: () => void
+}) {
   const pathname = usePathname()
-  const [mobileOpen, setMobileOpen] = useState(false)
   const isRtl = locale === "ar"
 
   const basePath = `/${locale}/admin`
@@ -41,66 +46,64 @@ export default function AdminSidebar({ locale }: { locale: string }) {
     return pathname.startsWith(basePath + href)
   }
 
+  const hiddenClass = mobileOpen
+    ? "translate-x-0"
+    : isRtl
+      ? "translate-x-full"
+      : "-translate-x-full"
+
   return (
-    <>
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-3 left-3 z-50 lg:hidden bg-zinc-900 text-white p-2 rounded-lg"
-      >
-        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
-
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-zinc-900 text-white flex flex-col transition-transform duration-200 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0`}
-      >
-        <div className="p-5 border-b border-zinc-800">
+    <aside
+      className={`fixed inset-y-0 start-0 z-50 w-64 bg-zinc-900 text-white flex flex-col transition-transform duration-200 ${hiddenClass} lg:translate-x-0 lg:z-30`}
+    >
+      <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
+        <div>
           <Link href={`/${locale}`} className="text-lg font-bold tracking-wider">
             SNEAKERS <span className="text-[#f97316]">CLUB</span>
           </Link>
           <p className="text-xs text-zinc-500 mt-0.5">Admin Panel</p>
         </div>
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
-        <nav className="flex-1 py-4 space-y-1 px-3 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const active = isActive(item.href)
-            return (
-              <Link
-                key={item.href}
-                href={`${basePath}${item.href}`}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  active
-                    ? "bg-[#f97316]/10 text-[#f97316] font-medium"
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-                }`}
-              >
-                <Icon className="w-5 h-5 shrink-0" />
-                <span>{isRtl ? item.labelAr : item.labelEn}</span>
-              </Link>
-            )
-          })}
-        </nav>
+      <nav className="flex-1 py-4 space-y-1 px-3 overflow-y-auto">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const active = isActive(item.href)
+          return (
+            <Link
+              key={item.href}
+              href={`${basePath}${item.href}`}
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                active
+                  ? "bg-[#f97316]/10 text-[#f97316] font-medium"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              }`}
+            >
+              <Icon className="w-5 h-5 shrink-0" />
+              <span>{isRtl ? item.labelAr : item.labelEn}</span>
+            </Link>
+          )
+        })}
+      </nav>
 
-        <div className="p-3 border-t border-zinc-800">
-          <Link
-            href={`/${locale}`}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-          >
-            <ArrowLeftFromLine className="w-5 h-5 shrink-0" />
-            <span>{isRtl ? "العودة للمتجر" : "Back to Store"}</span>
-          </Link>
-        </div>
-      </aside>
-    </>
+      <div className="p-3 border-t border-zinc-800">
+        <Link
+          href={`/${locale}`}
+          onClick={onClose}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+        >
+          <ArrowLeftFromLine className="w-5 h-5 shrink-0" />
+          <span>{isRtl ? "العودة للمتجر" : "Back to Store"}</span>
+        </Link>
+      </div>
+    </aside>
   )
 }

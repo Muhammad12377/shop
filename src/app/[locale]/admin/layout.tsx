@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation"
 import { createServerSupabase } from "@/lib/supabase/server"
-import AdminSidebar from "@/components/admin/AdminSidebar"
-import AdminHeader from "./AdminHeader"
+import AdminShell from "./AdminShell"
 import { Toaster } from "react-hot-toast"
 
 type Props = {
@@ -26,12 +25,8 @@ export default async function AdminLayout({ children, params }: Props) {
   if (profile?.role !== "admin") redirect("/")
 
   return (
-    <div className={`min-h-screen bg-zinc-50 flex ${isRtl ? "lg:flex-row-reverse" : ""}`}>
-      <AdminSidebar locale={locale} />
-      <div className="flex-1 flex flex-col lg:ml-64">
-        <AdminHeader locale={locale} />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
+    <>
+      <AdminShell locale={locale}>{children}</AdminShell>
       <Toaster
         position={isRtl ? "top-left" : "top-right"}
         toastOptions={{
@@ -39,6 +34,6 @@ export default async function AdminLayout({ children, params }: Props) {
           style: { direction: isRtl ? "rtl" : "ltr" },
         }}
       />
-    </div>
+    </>
   )
 }
