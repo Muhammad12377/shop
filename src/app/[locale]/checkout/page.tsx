@@ -10,6 +10,7 @@ import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import { CreditCard, MapPin, Phone, User, FileText, Ticket, Plus, X } from "lucide-react"
 import { colorLabel } from "@/lib/colors"
+import { PHONE_CODES, splitPhone } from "@/lib/phone-codes"
 import type { Address, Coupon } from "@/types"
 
 export default function CheckoutPage() {
@@ -32,6 +33,7 @@ export default function CheckoutPage() {
     city: "",
     notes: "",
   })
+  const [phoneCode, setPhoneCode] = useState("+963")
   const [settings, setSettings] = useState<any>(null)
   const [shippingCountries, setShippingCountries] = useState<any[]>([])
   const [selectedCountryId, setSelectedCountryId] = useState("")
@@ -53,9 +55,11 @@ export default function CheckoutPage() {
               setAddresses(data)
               const defaultAddr = data.find((a) => a.is_default) || data[0]
               setSelectedAddressId(defaultAddr.id)
+              const phone = splitPhone(defaultAddr.phone)
+              setPhoneCode(phone.code)
               setForm({
                 full_name: defaultAddr.full_name,
-                phone: defaultAddr.phone,
+                phone: phone.number,
                 address: defaultAddr.address,
                 city: defaultAddr.city,
                 notes: "",
@@ -107,9 +111,11 @@ export default function CheckoutPage() {
 
   const selectAddress = (addr: Address) => {
     setSelectedAddressId(addr.id)
+    const phone = splitPhone(addr.phone)
+    setPhoneCode(phone.code)
     setForm({
       full_name: addr.full_name,
-      phone: addr.phone,
+      phone: phone.number,
       address: addr.address,
       city: addr.city,
       notes: form.notes,
@@ -168,6 +174,11 @@ export default function CheckoutPage() {
         return
       }
 
+      if (!form.phone.trim()) {
+        toast.error(isRtl ? "يرجى إدخال رقم الهاتف" : "Please enter your phone number")
+        return
+      }
+
       const orderItems = items.map((item) => ({
         product_id: item.product_id,
         product_name: isRtl ? item.name_ar : item.name_en,
@@ -214,7 +225,7 @@ export default function CheckoutPage() {
           coupon_code: appliedCoupon?.code || null,
           total: grandTotal,
           full_name: form.full_name,
-          phone: form.phone,
+          phone: phoneCode + form.phone.trim().replace(/^0+/, ""),
           address: form.address,
           city: form.city,
           shipping_country: selectedCountry ? (isRtl ? selectedCountry.name_ar : selectedCountry.name_en) : null,
@@ -327,15 +338,29 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">{t("phone")}</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                    <input
-                      type="tel"
-                      value={form.phone}
-                      onChange={(e) => updateField("phone", e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
-                      required
-                    />
+                  <div className="grid grid-cols-[110px_1fr] gap-2">
+                    <select
+                      value={phoneCode}
+                      onChange={(e) => setPhoneCode(e.target.value)}
+                      className="w-full px-2 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm bg-white"
+                    >
+                      {PHONE_CODES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.code} {isRtl ? c.ar : c.en}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                      <input
+                        type="tel"
+                        value={form.phone}
+                        onChange={(e) => updateField("phone", e.target.value.replace(/[^0-9+]/g, ""))}
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                        placeholder={isRtl ? "مثال: 988765432" : "e.g. 988765432"}
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
                 <div>

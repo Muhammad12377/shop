@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import { MapPin, Plus, Edit2, Trash2, Star, X } from "lucide-react"
+import { PHONE_CODES, splitPhone } from "@/lib/phone-codes"
 import type { Address } from "@/types"
 
 export default function AddressesPage() {
@@ -15,6 +16,7 @@ export default function AddressesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
   const [saving, setSaving] = useState(false)
+  const [phoneCode, setPhoneCode] = useState("+963")
   const [form, setForm] = useState({
     label: "",
     full_name: "",
@@ -43,16 +45,19 @@ export default function AddressesPage() {
 
   const openAdd = () => {
     setEditingAddress(null)
+    setPhoneCode("+963")
     setForm({ label: "", full_name: "", phone: "", address: "", city: "", is_default: false })
     setShowModal(true)
   }
 
   const openEdit = (addr: Address) => {
     setEditingAddress(addr)
+    const phone = splitPhone(addr.phone)
+    setPhoneCode(phone.code)
     setForm({
       label: addr.label,
       full_name: addr.full_name,
-      phone: addr.phone,
+      phone: phone.number,
       address: addr.address,
       city: addr.city,
       is_default: addr.is_default,
@@ -70,14 +75,14 @@ export default function AddressesPage() {
     if (editingAddress) {
       const { error } = await supabase
         .from("addresses")
-        .update(form)
+        .update({ ...form, phone: phoneCode + form.phone })
         .eq("id", editingAddress.id)
       if (error) { toast.error(error.message); setSaving(false); return }
       toast.success("Address updated")
     } else {
       const { error } = await supabase
         .from("addresses")
-        .insert({ ...form, user_id: user.id })
+        .insert({ ...form, phone: phoneCode + form.phone, user_id: user.id })
       if (error) { toast.error(error.message); setSaving(false); return }
       toast.success("Address added")
     }
@@ -222,13 +227,26 @@ export default function AddressesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">{t("phone")}</label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => updateForm("phone", e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
-                  required
-                />
+                <div className="grid grid-cols-[110px_1fr] gap-2">
+                  <select
+                    value={phoneCode}
+                    onChange={(e) => setPhoneCode(e.target.value)}
+                    className="w-full px-2 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm bg-white"
+                  >
+                    {PHONE_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} {isRtl ? c.ar : c.en}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => updateForm("phone", e.target.value.replace(/[^0-9+]/g, ""))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">{t("address")}</label>
