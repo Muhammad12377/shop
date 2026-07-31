@@ -133,8 +133,8 @@ export default function AuthPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (otpCode.trim().length !== 6 && otpCode.trim().length !== 8) {
-      toast.error(isRtl ? "أدخل الرمز المكوّن من 6 أو 8 أرقام" : "Enter the 6 or 8-digit code")
+    if (otpCode.trim().length !== 8) {
+      toast.error(isRtl ? "أدخل الرمز المكوّن من 8 أرقام" : "Enter the 8-digit code")
       return
     }
     setVerifying(true)
@@ -320,7 +320,7 @@ export default function AuthPage() {
             </h1>
             <p className="text-zinc-500 text-sm text-center mb-8">
               {mode === "otp"
-                ? isRtl ? "أدخل الرمز المكوّن من 6 أرقام" : "Enter the 6-digit code"
+                ? isRtl ? "أدخل الرمز المكوّن من 8 أرقام" : "Enter the 8-digit code"
                 : mode === "forgot"
                   ? isRtl ? "أدخل بريدك وسنرسل لك رمز تحقق" : "Enter your email and we'll send a code"
                   : mode === "newpassword"
@@ -342,7 +342,7 @@ export default function AuthPage() {
                   <ShieldCheck className="w-4 h-4 inline-block text-[#f97316] mb-1" />
                   <p className="break-all" dir="ltr">{otpEmail}</p>
                   <p className="text-xs text-zinc-400 mt-1">
-                    {isRtl ? "أرسلنا رمزًا مكوّنًا من 6 أرقام إلى بريدك" : "We sent a 6-digit code to your email"}
+                    {isRtl ? "أرسلنا رمزًا مكوّنًا من 8 أرقام إلى بريدك" : "We sent an 8-digit code to your email"}
                   </p>
                 </div>
 
@@ -359,7 +359,7 @@ export default function AuthPage() {
 
                 <button
                   type="submit"
-                  disabled={verifying || (otpCode.length !== 6 && otpCode.length !== 8)}
+                  disabled={verifying || otpCode.length !== 8}
                   className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
                 >
                   {verifying ? (
