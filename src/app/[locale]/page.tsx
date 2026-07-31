@@ -227,7 +227,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
             {isRtl ? "لا توجد منتجات بعد" : "No products yet"}
           </div>
         ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {displayProducts.map((product: any, i: number) => (
             <Link
               key={product.id}
@@ -251,24 +251,24 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
                   </span>
                 )}
                 {product.compare_price && (
-                  <span className="absolute top-3 left-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
+                  <span className="absolute top-3 start-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
                     {Math.round((1 - product.price / product.compare_price) * 100)}% OFF
                   </span>
                 )}
               </div>
-              <div className="p-4">
-                <p className="text-xs text-zinc-400 mb-1">
+              <div className="p-3 sm:p-4">
+                <p className="text-xs text-zinc-400 mb-1 truncate">
                   {product.category
                     ? isRtl
                       ? product.category.name_ar
                       : product.category.name_en
                     : ""}
                 </p>
-                <h3 className="font-medium group-hover:text-accent transition-colors">
+                <h3 className="font-medium text-sm sm:text-base group-hover:text-accent transition-colors truncate">
                   {isRtl ? product.name_ar : product.name_en}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-accent font-bold">${product.price}</p>
+                  <p className="text-accent font-bold text-sm sm:text-base">${product.price}</p>
                   {product.compare_price && (
                     <p className="text-xs text-zinc-400 line-through">${product.compare_price}</p>
                   )}

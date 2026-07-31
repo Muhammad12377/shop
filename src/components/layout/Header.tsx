@@ -197,7 +197,10 @@ export default function Header() {
         </div>
 
         {menuOpen && (
-          <div className="md:hidden pb-4 border-t border-zinc-100 pt-4">
+          <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setMenuOpen(false)} />
+        )}
+        {menuOpen && (
+          <div className="relative z-40 md:hidden pb-4 border-t border-zinc-100 pt-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <form onSubmit={handleSearch} className="relative mb-4">
               <input
                 type="text"

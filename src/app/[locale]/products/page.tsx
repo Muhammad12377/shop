@@ -3,14 +3,15 @@ import { Link } from "@/lib/i18n/navigation"
 import Image from "next/image"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
-import { getCachedCategories, getCachedProducts } from "@/lib/home-data"
+import ProductFilters from "@/components/products/ProductFilters"
+import { Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { getCachedCategories, getCachedProducts, getCachedAllSizes } from "@/lib/home-data"
 
 const PAGE_SIZE = 24
 
 type Props = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ q?: string; category?: string; sort?: string; page?: string }>
+  searchParams: Promise<{ q?: string; category?: string; sort?: string; size?: string; page?: string }>
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -21,19 +22,26 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function ProductsPage({ params, searchParams }: Props) {
   const { locale } = await params
-  const { q, category, sort } = await searchParams
+  const { q, category, sort, size } = await searchParams
   const rawPage = Number((await searchParams).page) || 1
   const page = Math.max(1, rawPage)
   const t = await getTranslations({ locale, namespace: "nav" })
   const isRtl = locale === "ar"
 
+  const selectedSizes = size
+    ? size.split(",").map((s) => s.trim()).filter(Boolean)
+    : []
+
   const categories = await getCachedCategories()
   const activeCat = category && category !== "all" ? categories.find((c: any) => c.slug === category) : undefined
+
+  const sizes = await getCachedAllSizes(activeCat?.id)
 
   const { products, total } = await getCachedProducts({
     q,
     categoryId: activeCat?.id,
     sort,
+    sizes: selectedSizes,
     page,
     limit: PAGE_SIZE,
   })
@@ -45,6 +53,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
     if (q) sp.set("q", q)
     if (category && category !== "all") sp.set("category", category)
     if (sort) sp.set("sort", sort)
+    if (selectedSizes.length > 0) sp.set("size", selectedSizes.join(","))
     if (pageNum > 1) sp.set("page", String(pageNum))
     const qs = sp.toString()
     return qs ? `/products?${qs}` : "/products"
@@ -67,71 +76,19 @@ export default async function ProductsPage({ params, searchParams }: Props) {
       <Header />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
-          <aside className="md:w-56 shrink-0">
-            <div className="flex items-center gap-2 mb-4">
-              <SlidersHorizontal className="w-4 h-4" />
-              <span className="font-medium text-sm">{isRtl ? "تصفية" : "Filters"}</span>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-xs font-medium text-zinc-400 uppercase mb-2">
-                  {isRtl ? "التصنيف" : "Category"}
-                </h4>
-                <div className="space-y-1">
-                  <Link
-                    href="/products"
-                    className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                      !category ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
-                    }`}
-                  >
-                    {isRtl ? "الكل" : "All"}
-                  </Link>
-                  {(categories || []).map((cat: any) => (
-                    <Link
-                      key={cat.id}
-                      href={`/products?category=${cat.slug}`}
-                      className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                        category === cat.slug
-                          ? "bg-accent/10 text-accent font-medium"
-                          : "hover:bg-zinc-100 text-zinc-600"
-                      }`}
-                    >
-                      {isRtl ? cat.name_ar : cat.name_en}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-xs font-medium text-zinc-400 uppercase mb-2">
-                  {isRtl ? "الترتيب" : "Sort"}
-                </h4>
-                <div className="space-y-1">
-                  {[
-                    { key: "newest", label: isRtl ? "الأحدث" : "Newest" },
-                    { key: "price-asc", label: isRtl ? "السعر: من الأقل" : "Price: Low to High" },
-                    { key: "price-desc", label: isRtl ? "السعر: من الأعلى" : "Price: High to Low" },
-                  ].map((s) => (
-                    <Link
-                      key={s.key}
-                      href={`/products${s.key !== "newest" ? `?sort=${s.key}` : ""}${category ? `${s.key !== "newest" ? "&" : "?"}category=${category}` : ""}`}
-                      className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                        (s.key === "newest" && !sort) || sort === s.key
-                          ? "bg-accent/10 text-accent font-medium"
-                          : "hover:bg-zinc-100 text-zinc-600"
-                      }`}
-                    >
-                      {s.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </aside>
+          <ProductFilters
+            categories={categories}
+            sizes={sizes}
+            activeCategory={category}
+            activeSizes={selectedSizes}
+            sort={sort}
+            q={q}
+            isRtl={isRtl}
+          />
 
           <div className="flex-1">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold">{t("products")}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">{t("products")}</h1>
               <p className="text-sm text-zinc-500">
                 {isRtl ? `عرض ${total} منتج` : `Showing ${total} products`}
               </p>
@@ -159,7 +116,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                   {products.map((product: any) => (
                     <Link
                       key={product.id}
@@ -181,24 +138,24 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                           </span>
                         )}
                         {product.compare_price && (
-                          <span className="absolute top-3 left-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
+                          <span className="absolute top-3 start-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
                             {Math.round((1 - product.price / product.compare_price) * 100)}% OFF
                           </span>
                         )}
                       </div>
-                      <div className="p-4">
-                        <p className="text-xs text-zinc-400 mb-1">
+                      <div className="p-3 sm:p-4">
+                        <p className="text-xs text-zinc-400 mb-1 truncate">
                           {product.category
                             ? isRtl
                               ? product.category.name_ar
                               : product.category.name_en
                             : ""}
                         </p>
-                        <h3 className="font-medium group-hover:text-accent transition-colors truncate">
+                        <h3 className="font-medium text-sm sm:text-base group-hover:text-accent transition-colors truncate">
                           {isRtl ? product.name_ar : product.name_en}
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <p className="text-accent font-bold">${product.price}</p>
+                          <p className="text-accent font-bold text-sm sm:text-base">${product.price}</p>
                           {product.compare_price && (
                             <p className="text-xs text-zinc-400 line-through">
                               ${product.compare_price}

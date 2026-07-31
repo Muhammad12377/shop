@@ -97,7 +97,7 @@ export default function WishlistPage() {
   return (
     <div>
       <h2 className="text-lg font-semibold mb-6">{t("wishlist")}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {items.map((item) => {
           const product = item.products
           if (!product) return null

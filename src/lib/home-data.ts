@@ -90,8 +90,25 @@ export const getCachedSiblingProducts = unstable_cache(
   { tags: ["products", "home"], revalidate: 60 }
 )
 
+export const getCachedAllSizes = unstable_cache(
+  async (categoryId?: string) => {
+    let query = client.from("products").select("sizes").eq("active", true)
+    if (categoryId) query = query.eq("category_id", categoryId)
+    const { data } = await query
+    const set = new Set<string>()
+    for (const row of data || []) {
+      for (const s of row.sizes || []) {
+        if (s) set.add(String(s))
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }))
+  },
+  ["products-sizes"],
+  { tags: ["products", "home"], revalidate: 60 }
+)
+
 export const getCachedProducts = unstable_cache(
-  async (opts: { q?: string; categoryId?: string; sort?: string; page: number; limit: number }) => {
+  async (opts: { q?: string; categoryId?: string; sort?: string; sizes?: string[]; page: number; limit: number }) => {
     const search = opts.q?.replace(/[%_]/g, "").trim()
     let query = client
       .from("products")
@@ -104,6 +121,10 @@ export const getCachedProducts = unstable_cache(
 
     if (search) {
       query = query.or(`name_en.ilike.%${search}%,name_ar.ilike.%${search}%`)
+    }
+
+    if (opts.sizes && opts.sizes.length > 0) {
+      query = query.overlaps("sizes", opts.sizes)
     }
 
     if (opts.sort === "price-asc") {
