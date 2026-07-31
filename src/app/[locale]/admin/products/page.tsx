@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon } from "lucide-react"
+import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon, Layers } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Product, ProductCategory, Media } from "@/types"
+import { colorBackground, colorLabel } from "@/lib/colors"
 
 const presetColors = [
   "#ffffff", "#000000", "#f5f5f5", "#9ca3af", "#6b7280", "#374151",
@@ -43,6 +44,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [sizeInput, setSizeInput] = useState("")
   const [colorInput, setColorInput] = useState("")
+  const [combinePick, setCombinePick] = useState<string[]>([])
   const [imageInput, setImageInput] = useState("")
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
@@ -446,8 +448,8 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {(form.colors || []).map((c) => (
                     <span key={c} className="inline-flex items-center gap-1.5 px-2 py-1 bg-zinc-100 rounded-md text-xs">
-                      <span className="w-4 h-4 rounded-full inline-block border border-zinc-200" style={{ backgroundColor: c }} />
-                      {c}
+                      <span className="w-4 h-4 rounded-full inline-block border border-zinc-200" style={{ background: colorBackground(c) }} />
+                      {colorLabel(c)}
                       <button onClick={() => removeColor(c)} className="cursor-pointer"><X className="w-3 h-3" /></button>
                     </span>
                   ))}
@@ -491,6 +493,57 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   >
                     <Plus className="w-4 h-4" />
                   </button>
+                </div>
+
+                <div className="mt-4 p-3 bg-zinc-50 rounded-xl border border-zinc-200">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-zinc-700 mb-2">
+                    <Layers className="w-4 h-4 text-[#f97316]" />
+                    {isRtl ? "لون مدمج (دائرة بأكثر من لون)" : "Combined color (circle with multiple colors)"}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {presetColors.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          setCombinePick((prev) =>
+                            prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c].slice(0, 4)
+                          )
+                        }}
+                        className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
+                          combinePick.includes(c) ? "border-blue-500 scale-110" : "border-zinc-200"
+                        }`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="w-10 h-10 rounded-full border-2 border-zinc-300 inline-block"
+                      style={{ background: combinePick.length > 1 ? colorBackground(combinePick.join("|")) : "#fafafa" }}
+                      title={combinePick.join("|")}
+                    />
+                    <p className="text-xs text-zinc-500 flex-1">
+                      {combinePick.length < 2
+                        ? isRtl ? "اختر لونين أو أكثر ثم اضغط دمج" : "Pick 2+ colors, then click combine"
+                        : `${combinePick.length} ${isRtl ? "ألوان محددة" : "colors selected"}`}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={combinePick.length < 2}
+                      onClick={() => {
+                        const combined = combinePick.join("|")
+                        if (!(form.colors || []).includes(combined)) {
+                          setForm({ ...form, colors: [...(form.colors || []), combined] })
+                        }
+                        setCombinePick([])
+                      }}
+                      className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {isRtl ? "دمج الألوان" : "Combine"}
+                    </button>
+                  </div>
                 </div>
               </div>
 

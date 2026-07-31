@@ -6,6 +6,7 @@ import { Link } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import Header from "@/components/layout/Header"
 import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, Ticket, X } from "lucide-react"
+import { colorLabel } from "@/lib/colors"
 
 export default function CartPage() {
   const t = useTranslations("cart")
@@ -72,7 +73,7 @@ export default function CartPage() {
                   {isRtl ? item.name_ar : item.name_en}
                 </Link>
                 <p className="text-sm text-zinc-500">
-                  {item.size && `${item.size}`}{item.size && item.color && " / "}{item.color && `${item.color}`}
+                  {item.size && `${item.size}`}{item.size && item.color && " / "}{item.color && `${colorLabel(item.color)}`}
                 </p>
                 <p className="text-accent font-bold mt-1">${item.price.toFixed(2)}</p>
               </div>

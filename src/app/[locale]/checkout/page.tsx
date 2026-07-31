@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import { CreditCard, MapPin, Phone, User, FileText, Ticket, Plus, X } from "lucide-react"
+import { colorLabel } from "@/lib/colors"
 import type { Address, Coupon } from "@/types"
 
 export default function CheckoutPage() {
@@ -367,7 +368,7 @@ export default function CheckoutPage() {
                         {isRtl ? item.name_ar : item.name_en}
                       </p>
                       <p className="text-xs text-zinc-400">
-                        {item.size} / {item.color} x{item.quantity}
+                        {item.size} / {colorLabel(item.color)} x{item.quantity}
                       </p>
                       <p className="text-sm font-medium">
                         ${(item.price * item.quantity).toFixed(2)}

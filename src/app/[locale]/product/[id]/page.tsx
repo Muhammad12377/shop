@@ -10,6 +10,7 @@ import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { ShoppingCart, Heart, Star, Check, ChevronLeft, ChevronRight, Package, Truck, Shield } from "lucide-react"
+import { colorBackground } from "@/lib/colors"
 
 export default function ProductPage() {
   const t = useTranslations("product")
@@ -282,7 +283,7 @@ export default function ProductPage() {
                     className={`w-8 h-8 rounded-full border-2 transition-colors ${
                       selectedColor === color ? "border-accent scale-110" : "border-zinc-200"
                     }`}
-                    style={{ backgroundColor: color }}
+                    style={{ background: colorBackground(color) }}
                   />
                 ))}
               </div>
