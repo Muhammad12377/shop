@@ -22,7 +22,6 @@ export default function ProductView({ product, siblings }: { product: any; sibli
   const initialSize =
     (product?.sizes || []).find((s: string) => sizeQty(s) > 0) || product?.sizes?.[0] || ""
   const [selectedSize, setSelectedSize] = useState(initialSize)
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || "")
   const [selectedImage, setSelectedImage] = useState(0)
   const [showVideo, setShowVideo] = useState(false)
   const [inWishlist, setInWishlist] = useState(false)
@@ -81,7 +80,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
       price: product.price,
       image: product.images?.[0] || "",
       size: selectedSize,
-      color: selectedColor,
+      color: product.colors?.[0] || "",
       quantity: 1,
       slug: product.slug,
       stock: hasPerSize ? sizeQty(selectedSize) : product.stock,
@@ -243,12 +242,9 @@ export default function ProductView({ product, siblings }: { product: any; sibli
               <p className="text-sm font-medium mb-3">{t("colors")}</p>
               <div className="flex gap-2 items-center">
                 {(product.colors || []).map((color: string) => (
-                  <button
+                  <span
                     key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`w-8 h-8 rounded-full border-2 transition-colors ${
-                      selectedColor === color ? "border-accent scale-110" : "border-zinc-200"
-                    }`}
+                    className="w-8 h-8 rounded-full border-2 border-accent scale-110"
                     style={{ background: colorBackground(color) }}
                     title={colorLabel(color)}
                   />
@@ -284,10 +280,10 @@ export default function ProductView({ product, siblings }: { product: any; sibli
                 {isRtl
                   ? siblings?.length
                     ? "منتجات أخرى بنفس الاسم: اضغط على اللون للانتقال للمنتج"
-                    : "اضغط على لون لتغييره"
+                    : null
                   : siblings?.length
                     ? "Other products with the same name: click a color to view"
-                    : "Click a color to change it"}
+                    : null}
               </p>
             </div>
 
