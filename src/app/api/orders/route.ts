@@ -34,6 +34,15 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth()
   if (!auth) return NextResponse.json({ success: false, error: "Unauthorized" } satisfies ApiResponse, { status: 401 })
 
+  const { data: profile } = await auth.supabase
+    .from("profiles")
+    .select("blocked")
+    .eq("id", auth.user.id)
+    .single()
+  if (profile?.blocked) {
+    return NextResponse.json({ success: false, error: "Your account is blocked" } satisfies ApiResponse, { status: 403 })
+  }
+
   const body = await request.json()
 
   if (!body.items || !body.items.length || !body.full_name || !body.phone || !body.address || !body.city) {

@@ -11,7 +11,21 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createServerSupabase()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) return NextResponse.redirect(new URL(safeNext, origin))
+    if (!error) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("blocked")
+          .eq("id", user.id)
+          .single()
+        if (profile?.blocked) {
+          await supabase.auth.signOut()
+          return NextResponse.redirect(new URL("/auth?blocked=1", origin))
+        }
+      }
+      return NextResponse.redirect(new URL(safeNext, origin))
+    }
   }
 
   return NextResponse.redirect(new URL("/", origin))

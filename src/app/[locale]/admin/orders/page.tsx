@@ -130,6 +130,9 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                 <div className="flex items-center gap-4 flex-1">
                   <span className="font-mono text-sm font-medium">#{order.id.slice(0, 8)}</span>
                   <span className="text-sm text-zinc-600">{order.full_name}</span>
+                  {order.user_email && (
+                    <span className="text-xs text-zinc-400">{order.user_email}</span>
+                  )}
                   <span className="text-sm text-zinc-400">{(order.items?.length || 0)} {isRtl ? "منتج" : "items"}</span>
                   <span className="text-sm font-medium">${order.total?.toFixed(2)}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || "bg-zinc-100"}`}>
@@ -137,8 +140,8 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-xs text-zinc-400">
-                    {new Date(order.created_at).toLocaleDateString(isRtl ? "ar" : "en-US")}
+                  <span className="text-xs text-zinc-400" title={order.created_at}>
+                    {new Date(order.created_at).toLocaleString(isRtl ? "ar" : "en-US")}
                   </span>
                   {expandedId === order.id ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
                 </div>
@@ -150,6 +153,7 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                     <div>
                       <h4 className="text-xs font-medium text-zinc-500 uppercase mb-1">{isRtl ? "معلومات العميل" : "Customer Info"}</h4>
                       <p className="text-sm">{order.full_name}</p>
+                      <p className="text-sm text-zinc-500">{order.user_email || order.user_id}</p>
                       <p className="text-sm text-zinc-500">{order.phone}</p>
                     </div>
                     <div>

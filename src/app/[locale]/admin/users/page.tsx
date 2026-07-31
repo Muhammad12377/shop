@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Shield, ShieldOff, Loader2, X } from "lucide-react"
+import { Shield, ShieldOff, Ban, CheckCircle2, Loader2, X } from "lucide-react"
 import toast from "react-hot-toast"
 import type { UserProfile } from "@/types"
 
-type ConfirmState = { user: UserProfile; action: "promote" | "demote" } | null
+type ConfirmState = { user: UserProfile; action: "promote" | "demote" | "block" | "unblock" } | null
 
 export default function AdminUsersPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
   const [locale, setLocale] = useState("en")
@@ -37,7 +37,7 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
     return (name ? name : user.email).trim()
   }
 
-  const openConfirm = (user: UserProfile, action: "promote" | "demote") => {
+  const openConfirm = (user: UserProfile, action: "promote" | "demote" | "block" | "unblock") => {
     setTypedName("")
     setConfirming({ user, action })
   }
@@ -45,9 +45,27 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
   const performAction = async () => {
     if (!confirming) return
     const { user, action } = confirming
-    const newRole = action === "promote" ? "admin" : "user"
     setTogglingId(user.id)
     try {
+      if (action === "block" || action === "unblock") {
+        const blocked = action === "block"
+        const res = await fetch(`/api/admin/users/${user.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blocked }),
+        })
+        const data = await res.json()
+        if (data.error) throw new Error(data.error)
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, blocked } : u)))
+        toast.success(
+          blocked
+            ? isRtl ? "تم حظر الحساب" : "Account blocked"
+            : isRtl ? "تم فك الحظر" : "Account unblocked"
+        )
+        setConfirming(null)
+        return
+      }
+      const newRole = action === "promote" ? "admin" : "user"
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -78,7 +96,9 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
   }
 
   const isMatch = confirming
-    ? typedName.trim().toLowerCase() === matchText(confirming.user).toLowerCase()
+    ? confirming.action === "block" || confirming.action === "unblock"
+      ? typedName.trim().toLowerCase() === (isRtl ? "تأكيد" : "confirm")
+      : typedName.trim().toLowerCase() === matchText(confirming.user).toLowerCase()
     : false
 
   return (
@@ -110,49 +130,85 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                     <td className="px-4 py-3 font-medium">{u.full_name || "-"}</td>
                     <td className="px-4 py-3 text-zinc-500">{u.email}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          u.role === "admin"
-                            ? "bg-[#f97316]/10 text-[#f97316]"
-                            : "bg-zinc-100 text-zinc-600"
-                        }`}
-                      >
-                        {u.role === "admin"
-                          ? isRtl ? "مدير" : "Admin"
-                          : isRtl ? "مستخدم" : "User"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            u.role === "admin"
+                              ? "bg-[#f97316]/10 text-[#f97316]"
+                              : "bg-zinc-100 text-zinc-600"
+                          }`}
+                        >
+                          {u.role === "admin"
+                            ? isRtl ? "مدير" : "Admin"
+                            : isRtl ? "مستخدم" : "User"}
+                        </span>
+                        {u.blocked && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            {isRtl ? "محظور" : "Blocked"}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-500">
                       {new Date(u.created_at).toLocaleDateString(isRtl ? "ar" : "en-US")}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => openConfirm(u, u.role === "admin" ? "demote" : "promote")}
-                        disabled={togglingId === u.id || u.is_me}
-                        title={u.is_me ? "This is your own account" : undefined}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                          u.is_me
-                            ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openConfirm(u, u.blocked ? "unblock" : "block")}
+                          disabled={togglingId === u.id || u.is_me}
+                          title={u.is_me ? "This is your own account" : undefined}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
+                            u.is_me
+                              ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                              : u.blocked
+                                ? "bg-green-50 text-green-700 hover:bg-green-100"
+                                : "bg-red-50 text-red-600 hover:bg-red-100"
+                          }`}
+                        >
+                          {togglingId === u.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : u.is_me ? (
+                            <Ban className="w-3 h-3" />
+                          ) : u.blocked ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <Ban className="w-3 h-3" />
+                          )}
+                          {u.is_me
+                            ? isRtl ? "حسابك الحالي" : "Your account"
+                            : u.blocked
+                              ? isRtl ? "فك الحظر" : "Unblock"
+                              : isRtl ? "حظر الحساب" : "Block"}
+                        </button>
+                        <button
+                          onClick={() => openConfirm(u, u.role === "admin" ? "demote" : "promote")}
+                          disabled={togglingId === u.id || u.is_me}
+                          title={u.is_me ? "This is your own account" : undefined}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
+                            u.is_me
+                              ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                              : u.role === "admin"
+                                ? "bg-red-50 text-red-600 hover:bg-red-100"
+                                : "bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20"
+                          }`}
+                        >
+                          {togglingId === u.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : u.is_me ? (
+                            <Shield className="w-3 h-3" />
+                          ) : u.role === "admin" ? (
+                            <ShieldOff className="w-3 h-3" />
+                          ) : (
+                            <Shield className="w-3 h-3" />
+                          )}
+                          {u.is_me
+                            ? isRtl ? "حسابك الحالي" : "Your account"
                             : u.role === "admin"
-                              ? "bg-red-50 text-red-600 hover:bg-red-100"
-                              : "bg-[#f97316]/10 text-[#f97316] hover:bg-[#f97316]/20"
-                        } disabled:opacity-50`}
-                      >
-                        {togglingId === u.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : u.is_me ? (
-                          <Shield className="w-3 h-3" />
-                        ) : u.role === "admin" ? (
-                          <ShieldOff className="w-3 h-3" />
-                        ) : (
-                          <Shield className="w-3 h-3" />
-                        )}
-                        {u.is_me
-                          ? isRtl ? "حسابك الحالي" : "Your account"
-                          : u.role === "admin"
-                            ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
-                            : isRtl ? "تعيين مدير" : "Make Admin"}
-                      </button>
+                              ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
+                              : isRtl ? "تعيين مدير" : "Make Admin"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -176,10 +232,20 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
               <div className="flex items-center gap-3">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    confirming.action === "demote" ? "bg-red-50" : "bg-[#f97316]/10"
+                    confirming.action === "block"
+                      ? "bg-red-50"
+                      : confirming.action === "unblock"
+                        ? "bg-green-50"
+                        : confirming.action === "demote"
+                          ? "bg-red-50"
+                          : "bg-[#f97316]/10"
                   }`}
                 >
-                  {confirming.action === "demote" ? (
+                  {confirming.action === "block" ? (
+                    <Ban className="w-5 h-5 text-red-600" />
+                  ) : confirming.action === "unblock" ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  ) : confirming.action === "demote" ? (
                     <ShieldOff className="w-5 h-5 text-red-600" />
                   ) : (
                     <Shield className="w-5 h-5 text-[#f97316]" />
@@ -187,9 +253,13 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">
-                    {confirming.action === "demote"
-                      ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin Role"
-                      : isRtl ? "تعيين كمدير" : "Make Admin"}
+                    {confirming.action === "block"
+                      ? isRtl ? "حظر الحساب" : "Block Account"
+                      : confirming.action === "unblock"
+                        ? isRtl ? "فك الحظر" : "Unblock Account"
+                        : confirming.action === "demote"
+                          ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin Role"
+                          : isRtl ? "تعيين كمدير" : "Make Admin"}
                   </h2>
                   <p className="text-sm text-zinc-500">{confirming.user.email}</p>
                 </div>
@@ -203,17 +273,29 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
             </div>
 
             <p className="text-sm text-zinc-600 mb-4">
-              {confirming.action === "demote"
+              {confirming.action === "block"
                 ? isRtl
-                  ? "سيتم إزالة صلاحية المدير من هذا المستخدم."
-                  : "This user will lose admin access."
-                : isRtl
-                  ? "سيتم منح هذا المستخدم صلاحية المدير."
-                  : "This user will gain admin access."}
+                  ? "سيتم منع هذا المستخدم من تسجيل الدخول وإتمام الطلبات."
+                  : "This user will be prevented from signing in and placing orders."
+                : confirming.action === "unblock"
+                  ? isRtl
+                    ? "سيتم السماح لهذا المستخدم بتسجيل الدخول وإتمام الطلبات مجددًا."
+                    : "This user will be allowed to sign in and place orders again."
+                : confirming.action === "demote"
+                  ? isRtl
+                    ? "سيتم إزالة صلاحية المدير من هذا المستخدم."
+                    : "This user will lose admin access."
+                  : isRtl
+                    ? "سيتم منح هذا المستخدم صلاحية المدير."
+                    : "This user will gain admin access."}
             </p>
 
             <label className="block text-sm font-medium text-zinc-700 mb-1.5">
-              {isRtl ? "اكتب اسم المستخدم لتأكيد العملية" : "Type the user name to confirm"}
+              {confirming.action === "block" || confirming.action === "unblock"
+                ? isRtl
+                  ? "اكتب كلمة تأكيد للمتابعة"
+                  : "Type the word confirm to proceed"
+                : isRtl ? "اكتب اسم المستخدم لتأكيد العملية" : "Type the user name to confirm"}
             </label>
             <input
               type="text"
@@ -221,7 +303,11 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
               onChange={(e) => setTypedName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && isMatch && togglingId === null) performAction() }}
               autoFocus
-              placeholder={matchText(confirming.user)}
+              placeholder={
+                confirming.action === "block" || confirming.action === "unblock"
+                  ? isRtl ? "تأكيد" : "confirm"
+                  : matchText(confirming.user)
+              }
               className={`w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 transition-colors ${
                 typedName && !isMatch
                   ? "border-red-300 focus:ring-red-200"
@@ -230,7 +316,7 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
             />
             {typedName && !isMatch && (
               <p className="mt-1.5 text-xs text-red-600">
-                {isRtl ? "الاسم غير مطابق" : "Name does not match"}
+                {isRtl ? "الكلمة غير مطابقة" : "Text does not match"}
               </p>
             )}
 
@@ -246,9 +332,13 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                 onClick={performAction}
                 disabled={!isMatch || togglingId !== null}
                 className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                  confirming.action === "demote"
+                  confirming.action === "block"
                     ? "bg-red-600 hover:bg-red-700"
-                    : "bg-[#f97316] hover:bg-[#ea580c]"
+                    : confirming.action === "unblock"
+                      ? "bg-green-600 hover:bg-green-700"
+                      : confirming.action === "demote"
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-[#f97316] hover:bg-[#ea580c]"
                 }`}
               >
                 {togglingId !== null ? (
@@ -256,6 +346,10 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                     <Loader2 className="w-4 h-4 animate-spin" />
                     {isRtl ? "جارٍ التنفيذ..." : "Processing..."}
                   </span>
+                ) : confirming.action === "block" ? (
+                  isRtl ? "تأكيد الحظر" : "Confirm Block"
+                ) : confirming.action === "unblock" ? (
+                  isRtl ? "تأكيد فك الحظر" : "Confirm Unblock"
                 ) : confirming.action === "demote" ? (
                   isRtl ? "تأكيد الإزالة" : "Confirm Removal"
                 ) : (

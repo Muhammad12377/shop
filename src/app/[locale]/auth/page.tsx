@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter } from "@/lib/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -29,6 +29,11 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [blockedNotice, setBlockedNotice] = useState(false)
+
+  useEffect(() => {
+    if (window.location.search.includes("blocked=1")) setBlockedNotice(true)
+  }, [])
 
   const handleGoogle = async () => {
     setGoogleLoading(true)
@@ -70,6 +75,16 @@ export default function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("blocked")
+          .eq("id", (await supabase.auth.getUser()).data.user!.id)
+          .single()
+        if (profile?.blocked) {
+          await supabase.auth.signOut()
+          toast.error(locale === "ar" ? "تم حظر حسابك" : "Your account has been blocked")
+          return
+        }
         toast.success("Welcome back!")
         router.push("/")
         router.refresh()
@@ -96,6 +111,14 @@ export default function AuthPage() {
             <p className="text-zinc-500 text-sm text-center mb-8">
               {mode === "login" ? "Sneakers Club Syria" : "Sneakers Club Syria"}
             </p>
+
+            {blockedNotice && (
+              <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 text-center">
+                {isRtl
+                  ? "تم حظر حسابك. تواصل مع الإدارة للمزيد من المعلومات."
+                  : "Your account has been blocked. Contact support for more information."}
+              </div>
+            )}
 
             <button
               type="button"

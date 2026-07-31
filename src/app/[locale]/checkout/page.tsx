@@ -164,6 +164,15 @@ export default function CheckoutPage() {
         router.push("/auth")
         return
       }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("blocked")
+        .eq("id", user.id)
+        .single()
+      if (profile?.blocked) {
+        toast.error(isRtl ? "تم حظر حسابك ولا يمكنك إتمام الطلبات" : "Your account is blocked and cannot place orders")
+        return
+      }
 
       if (!selectedCountryId) {
         toast.error(isRtl ? "يرجى اختيار الدولة" : "Please select a country")

@@ -30,6 +30,17 @@ export async function GET(req: Request) {
       )
     }
 
+    const userIds = [...new Set(results.map((o) => o.user_id).filter(Boolean))]
+    const emails: Record<string, string> = {}
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .in("id", userIds)
+      for (const p of profiles || []) emails[p.id] = p.email
+    }
+    results = results.map((o) => ({ ...o, user_email: emails[o.user_id] || null }))
+
     return NextResponse.json(results)
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })

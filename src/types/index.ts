@@ -11,6 +11,7 @@ export type UserProfile = {
   address?: string
   city?: string
   role: UserRole
+  blocked?: boolean
   created_at: string
   updated_at?: string
   is_me?: boolean
@@ -93,6 +94,7 @@ export type Order = {
   zone_id?: string
   notes?: string
   items: OrderItem[]
+  user_email?: string
   created_at: string
   updated_at?: string
 }
