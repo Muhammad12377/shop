@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import Image from "next/image"
 import { Link } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import Header from "@/components/layout/Header"
+import { createClient } from "@/lib/supabase/client"
 import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, Ticket, X } from "lucide-react"
 import { colorLabel } from "@/lib/colors"
 
@@ -14,12 +15,29 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, total } = useCartStore()
   const [couponCode, setCouponCode] = useState("")
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
+  const [settings, setSettings] = useState<any>(null)
   const locale = useLocale()
   const isRtl = locale === "ar"
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await createClient().from("settings").select("key, value")
+        if (cancelled) return
+        const s: Record<string, any> = {}
+        for (const row of data || []) s[row.key] = row.value
+        setSettings(s)
+      } catch {}
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const subtotal = total()
-  const shipping = subtotal >= 100 ? 0 : 5
-  const grandTotal = appliedCoupon ? subtotal + shipping - (subtotal * 0.1) : subtotal + shipping
+  const freeShip = settings && subtotal >= (Number(settings.free_shipping_min) || 100)
+  const grandTotal = subtotal - (appliedCoupon ? subtotal * 0.1 : 0)
 
   if (items.length === 0) {
     return (
@@ -163,10 +181,12 @@ export default function CartPage() {
             <div className="flex justify-between">
               <span className="text-zinc-500">{t("shipping")}</span>
               <span>
-                {shipping === 0 ? (
+                {freeShip ? (
                   <span className="text-green-600">{t("free_shipping")}</span>
                 ) : (
-                  `$${shipping.toFixed(2)}`
+                  <span className="text-amber-600 text-xs font-medium">
+                    {isRtl ? "حسب الدولة (في إتمام الطلب)" : "By country (at checkout)"}
+                  </span>
                 )}
               </span>
             </div>
@@ -176,7 +196,7 @@ export default function CartPage() {
                 <span>-${(subtotal * 0.1).toFixed(2)}</span>
               </div>
             )}
-            {shipping > 0 && (
+            {freeShip && settings && (
               <p className="text-xs text-zinc-400">{t("free_shipping_note")}</p>
             )}
             <div className="border-t border-zinc-100 pt-3 flex justify-between items-center">
