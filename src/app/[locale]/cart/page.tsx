@@ -88,11 +88,22 @@ export default function CartPage() {
                 <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  className="p-1.5 rounded-full hover:bg-zinc-100 transition-colors"
+                  disabled={item.stock != null && item.quantity >= item.stock}
+                  className="p-1.5 rounded-full hover:bg-zinc-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={
+                    item.stock != null && item.quantity >= item.stock
+                      ? isRtl ? "وصلت للحد الأقصى للمخزون" : "Maximum stock reached"
+                      : undefined
+                  }
                 >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
+              {item.stock != null && item.quantity >= item.stock && (
+                <p className="text-xs text-zinc-400">
+                  {isRtl ? `الحد الأقصى: ${item.stock}` : `Max: ${item.stock}`}
+                </p>
+              )}
               <p className="text-sm font-medium w-20 text-right">
                 ${(item.price * item.quantity).toFixed(2)}
               </p>

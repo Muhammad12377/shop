@@ -44,6 +44,7 @@ export type Product = {
   slug: string
   featured: boolean
   active: boolean
+  video_url?: string
   created_at: string
   updated_at?: string
 }
@@ -67,6 +68,7 @@ export type CartItem = {
   color: string
   quantity: number
   slug: string
+  stock?: number
 }
 
 export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"

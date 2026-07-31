@@ -46,7 +46,28 @@ export async function POST(request: NextRequest) {
   const shipping_fee = Number(settingsMap.shipping_fee) || 0
   const free_shipping_min = Number(settingsMap.free_shipping_min) || 0
 
-  const subtotal = body.items.reduce((sum: number, item: any) => sum + Number(item.price) * Number(item.quantity), 0)
+  const productIds = [...new Set(body.items.map((i: any) => i.product_id))]
+  const { data: stockRows } = await auth.supabase
+    .from("products")
+    .select("id, stock, price, name_en, name_ar")
+    .in("id", productIds)
+  const stockMap: Record<string, any> = {}
+  for (const p of stockRows || []) stockMap[p.id] = p
+
+  let subtotal = 0
+  for (const item of body.items) {
+    const product = stockMap[item.product_id]
+    if (!product) {
+      return NextResponse.json({ success: false, error: "A product in your cart is no longer available" } satisfies ApiResponse, { status: 400 })
+    }
+    if (Number(item.quantity) > Number(product.stock)) {
+      return NextResponse.json(
+        { success: false, error: `Only ${product.stock} in stock for "${product.name_en}"` } satisfies ApiResponse,
+        { status: 400 }
+      )
+    }
+    subtotal += Number(product.price) * Number(item.quantity)
+  }
 
   let shipping_country: string | null = null
   let shipping_zone: string | null = null
@@ -138,6 +159,14 @@ export async function POST(request: NextRequest) {
     status: "pending",
     created_by: auth.user.id,
   })
+
+  for (const item of body.items) {
+    const product = stockMap[item.product_id]
+    await auth.supabase
+      .from("products")
+      .update({ stock: Math.max(0, Number(product.stock) - Number(item.quantity)) })
+      .eq("id", item.product_id)
+  }
 
   await auth.supabase.from("cart_items").delete().eq("user_id", auth.user.id)
 

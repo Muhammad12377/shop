@@ -198,6 +198,42 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     setForm({ ...form, images: (form.images || []).filter((i) => i !== url) })
   }
 
+  const uploadMedia = async (file: File, isVideo: boolean) => {
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      if (isVideo) {
+        setForm({ ...form, video_url: data.url })
+        toast.success(isRtl ? "تم رفع الفيديو" : "Video uploaded")
+      } else {
+        setForm({ ...form, images: [...(form.images || []), data.url] })
+        toast.success(isRtl ? "تم رفع الصورة" : "Image uploaded")
+      }
+      fetchMedia()
+      return true
+    } catch (err: any) {
+      toast.error(err.message || (isRtl ? "خطأ في الرفع" : "Upload failed"))
+      return false
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await uploadMedia(file, false)
+    if (e.target) e.target.value = ""
+  }
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await uploadMedia(file, true)
+    if (e.target) e.target.value = ""
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -567,7 +603,14 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-2 mb-2">
+                <div className="flex gap-2 mb-2 flex-wrap">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="product-image-upload"
+                  />
                   <input
                     type="text"
                     value={imageInput}
@@ -578,6 +621,14 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   />
                   <button onClick={addImage} className="px-3 py-2 bg-zinc-100 rounded-lg text-sm hover:bg-zinc-200 cursor-pointer">
                     <Plus className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById("product-image-upload")?.click()}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-[#f97316]/10 text-[#f97316] rounded-lg text-sm font-medium hover:bg-[#f97316]/20 cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {isRtl ? "رفع" : "Upload"}
                   </button>
                   <button
                     type="button"
@@ -593,6 +644,53 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                     {isRtl ? "لا توجد صور في المكتبة — ارفع صورًا من صفحة الوسائط أولاً" : "No images in library yet — upload some from the Media page first"}
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
+                  {isRtl ? "فيديو المنتج (اختياري)" : "Product Video (optional)"}
+                </label>
+                {form.video_url && (
+                  <div className="relative mb-2">
+                    <video
+                      src={form.video_url}
+                      controls
+                      className="w-full max-h-48 rounded-xl border border-zinc-200 bg-zinc-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, video_url: "" })}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 cursor-pointer"
+                      title={isRtl ? "إزالة الفيديو" : "Remove video"}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                    id="product-video-upload"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById("product-video-upload")?.click()}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-[#f97316]/10 text-[#f97316] rounded-lg text-sm font-medium hover:bg-[#f97316]/20 cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {isRtl ? "رفع فيديو (حتى 50MB)" : "Upload Video (up to 50MB)"}
+                  </button>
+                  <input
+                    type="text"
+                    value={form.video_url || ""}
+                    onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+                    placeholder={isRtl ? "أو الصق رابط الفيديو..." : "Or paste a video URL..."}
+                    className="flex-1 px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-6">

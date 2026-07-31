@@ -8,9 +8,13 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   "image/webp": ["webp"],
   "image/avif": ["avif"],
   "image/gif": ["gif"],
+  "video/mp4": ["mp4"],
+  "video/webm": ["webm"],
+  "video/quicktime": ["mov"],
 }
 
-const MAX_SIZE = 5 * 1024 * 1024
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024
 
 export async function POST(req: Request) {
   try {
@@ -33,11 +37,19 @@ export async function POST(req: Request) {
     const type = file.type.toLowerCase()
     const ext = file.name.split(".").pop()?.toLowerCase() || ""
     if (!ALLOWED_TYPES[type] || !ALLOWED_TYPES[type].includes(ext)) {
-      return NextResponse.json({ error: "Only image files are allowed (jpg, png, webp, avif, gif)" }, { status: 415 })
+      return NextResponse.json(
+        { error: "Only images (jpg, png, webp, avif, gif) or videos (mp4, webm, mov) are allowed" },
+        { status: 415 }
+      )
     }
 
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: "File too large, maximum size is 5MB" }, { status: 413 })
+    const isVideo = type.startsWith("video/")
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: isVideo ? "File too large, maximum video size is 50MB" : "File too large, maximum image size is 5MB" },
+        { status: 413 }
+      )
     }
 
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`

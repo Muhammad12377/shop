@@ -167,6 +167,30 @@ export default function CheckoutPage() {
         image: item.image,
       }))
 
+      const productIds = [...new Set(orderItems.map((i) => i.product_id))]
+      const { data: stockRows } = await supabase
+        .from("products")
+        .select("id, stock, name_en, name_ar")
+        .in("id", productIds)
+      const stockMap: Record<string, any> = {}
+      for (const p of stockRows || []) stockMap[p.id] = p
+
+      for (const item of orderItems) {
+        const product = stockMap[item.product_id]
+        if (!product) {
+          toast.error(isRtl ? "أحد المنتجات غير متوفر" : "A product is no longer available")
+          return
+        }
+        if (item.quantity > Number(product.stock)) {
+          toast.error(
+            isRtl
+              ? `لا يمكن طلب أكثر من ${product.stock} من "${product.name_ar}" (المتوفر: ${product.stock})`
+              : `Cannot order more than ${product.stock} of "${product.name_en}" (in stock: ${product.stock})`
+          )
+          return
+        }
+      }
+
       const { data: order, error } = await supabase
         .from("orders")
         .insert({
@@ -205,6 +229,16 @@ export default function CheckoutPage() {
         status: "pending",
         note: "Order placed",
       })
+
+      for (const item of orderItems) {
+        const product = stockMap[item.product_id]
+        if (product) {
+          await supabase
+            .from("products")
+            .update({ stock: Math.max(0, Number(product.stock) - item.quantity) })
+            .eq("id", item.product_id)
+        }
+      }
 
       clearCart()
       toast.success(t("order_confirmed"))
