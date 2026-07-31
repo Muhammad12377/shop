@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server"
 import { createServerSupabase } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Link } from "@/lib/i18n/navigation"
-import { User, MapPin, Heart, Package } from "lucide-react"
+import { User, MapPin, Heart, Package, ArrowLeft } from "lucide-react"
 
 type Props = {
   children: React.ReactNode
@@ -28,6 +28,13 @@ export default async function AccountLayout({ children, params }: Props) {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-accent transition-colors mb-4"
+        >
+          <ArrowLeft className={`w-4 h-4 ${isRtl ? "rotate-180" : ""}`} />
+          {isRtl ? "العودة للمتجر" : "Back to store"}
+        </Link>
         <h1 className="text-2xl font-bold mb-8">{t("title")}</h1>
         <div className="flex flex-col md:flex-row gap-8">
           <aside className="md:w-56 shrink-0">
