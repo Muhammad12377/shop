@@ -12,7 +12,7 @@ import { Mail, Lock, User, Eye, EyeOff, Loader2, ShieldCheck, ArrowRight } from 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 type AuthMode = "login" | "register" | "otp" | "forgot" | "newpassword"
-type OtpOrigin = "register" | "forgot" | "login"
+type OtpOrigin = "register" | "forgot"
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -103,19 +103,6 @@ export default function AuthPage() {
         setMode("newpassword")
         toast.success(isRtl ? "تم التحقق! أدخل كلمة مرور جديدة" : "Verified! Enter a new password")
       } else {
-        if (otpOrigin === "login") {
-          const { data: userData } = await supabase.auth.getUser()
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("blocked")
-            .eq("id", userData.user!.id)
-            .single()
-          if (profile?.blocked) {
-            await supabase.auth.signOut()
-            toast.error(isRtl ? "تم حظر حسابك" : "Your account has been blocked")
-            return
-          }
-        }
         toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
         router.push("/")
         router.refresh()
@@ -210,7 +197,10 @@ export default function AuthPage() {
           })
           const captchaResult = await res.json()
           if (!captchaResult?.success) {
-            toast.error(isRtl ? "فشل التحقق الأمني، حاول مجددًا" : "Security check failed, try again")
+            const code = captchaResult?.error ? ` (${captchaResult.error})` : ""
+            toast.error(
+              isRtl ? `فشل التحقق الأمني، حاول مجددًا${code}` : `Security check failed, try again${code}`
+            )
             setCaptchaToken(null)
             setCaptchaResetKey((k) => k + 1)
             return
@@ -243,6 +233,10 @@ export default function AuthPage() {
       }
     } catch (err: any) {
       toast.error(err.message)
+      if (mode === "register") {
+        setCaptchaToken(null)
+        setCaptchaResetKey((k) => k + 1)
+      }
     } finally {
       setLoading(false)
     }
@@ -531,22 +525,6 @@ export default function AuthPage() {
                         className="block w-full mb-3 text-accent font-medium hover:underline"
                       >
                         {isRtl ? "نسيت كلمة المرور؟" : "Forgot password?"}
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (!email.trim()) {
-                            toast.error(isRtl ? "أدخل بريدك الإلكتروني أولًا" : "Enter your email first")
-                            return
-                          }
-                          sendOtp(email.trim(), "login")
-                            .then(() => {
-                              toast.success(isRtl ? "أرسلنا رمز التحقق إلى بريدك" : "Verification code sent to your email")
-                            })
-                            .catch((err: any) => toast.error(err.message))
-                        }}
-                        className="block w-full mb-3 text-accent font-medium hover:underline"
-                      >
-                        {isRtl ? "الدخول برمز تحقق بدل كلمة المرور" : "Sign in with a code instead of a password"}
                       </button>
                       {t("no_account")}{" "}
                       <button onClick={() => setMode("register")} className="text-accent font-medium hover:underline">
