@@ -94,16 +94,15 @@ export default function CheckoutPage() {
   const subtotal = total()
   const selectedCountry = shippingCountries.find((c) => c.id === selectedCountryId)
   const selectedZone = selectedCountry?.zones?.find((z: any) => z.id === selectedZoneId)
+  const hasZones = (selectedCountry?.zones?.length || 0) > 0
+  const freeShip = settings && subtotal >= (settings.free_shipping_min || 100)
   const baseShipping = selectedZone
     ? Number(selectedZone.price)
     : selectedCountry
       ? Number(selectedCountry.price)
-      : Number(settings?.shipping_fee) || 5
-  const shippingFee =
-    settings && subtotal >= (settings.free_shipping_min || 100)
-      ? 0
-      : baseShipping
-  const grandTotal = subtotal + shippingFee - discount
+      : null
+  const shippingFee = freeShip ? 0 : baseShipping
+  const grandTotal = subtotal + (shippingFee ?? 0) - discount
 
   const selectAddress = (addr: Address) => {
     setSelectedAddressId(addr.id)
@@ -154,6 +153,15 @@ export default function CheckoutPage() {
       if (!user) {
         toast.error(t("login_required"))
         router.push("/auth")
+        return
+      }
+
+      if (!selectedCountryId) {
+        toast.error(isRtl ? "يرجى اختيار الدولة" : "Please select a country")
+        return
+      }
+      if (hasZones && !selectedZoneId) {
+        toast.error(isRtl ? "يرجى اختيار المحافظة" : "Please select a governorate")
         return
       }
 
@@ -362,7 +370,6 @@ export default function CheckoutPage() {
                     <select
                       value={selectedCountryId}
                       onChange={(e) => { setSelectedCountryId(e.target.value); setSelectedZoneId("") }}
-                      required
                       className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm bg-white"
                     >
                       <option value="">{isRtl ? "اختر الدولة..." : "Select country..."}</option>
@@ -379,7 +386,6 @@ export default function CheckoutPage() {
                       <select
                         value={selectedZoneId}
                         onChange={(e) => setSelectedZoneId(e.target.value)}
-                        required
                         className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm bg-white"
                       >
                         <option value="">{isRtl ? "اختر المحافظة..." : "Select governorate..."}</option>
@@ -491,6 +497,10 @@ export default function CheckoutPage() {
                   <span>
                     {shippingFee === 0 ? (
                       <span className="text-green-600">{ct("free_shipping")}</span>
+                    ) : shippingFee == null ? (
+                      <span className="text-amber-600 text-xs font-medium">
+                        {isRtl ? "اختر الدولة لتحديد رسوم الشحن" : "Select a country to see shipping cost"}
+                      </span>
                     ) : (
                       `$${shippingFee.toFixed(2)}`
                     )}
@@ -502,7 +512,7 @@ export default function CheckoutPage() {
                     <span>-${discount.toFixed(2)}</span>
                   </div>
                 )}
-                {shippingFee > 0 && settings && (
+                {shippingFee != null && shippingFee > 0 && settings && (
                   <p className="text-xs text-zinc-400">
                     {ct("free_shipping_note")}
                   </p>
