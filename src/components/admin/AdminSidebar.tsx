@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import {
   LayoutDashboard,
   Package,
@@ -13,6 +14,7 @@ import {
   Image,
   Truck,
   ArrowLeftFromLine,
+  LogOut,
   X,
 } from "lucide-react"
 
@@ -38,6 +40,7 @@ export default function AdminSidebar({
   onClose: () => void
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const isRtl = locale === "ar"
 
   const basePath = `/${locale}/admin`
@@ -51,6 +54,13 @@ export default function AdminSidebar({
     : isRtl
       ? "translate-x-full"
       : "-translate-x-full"
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    onClose()
+    router.push(`/${locale}`)
+  }
 
   return (
     <aside
@@ -94,7 +104,7 @@ export default function AdminSidebar({
         })}
       </nav>
 
-      <div className="p-3 border-t border-zinc-800">
+      <div className="p-3 border-t border-zinc-800 space-y-1">
         <Link
           href={`/${locale}`}
           onClick={onClose}
@@ -103,6 +113,13 @@ export default function AdminSidebar({
           <ArrowLeftFromLine className="w-5 h-5 shrink-0" />
           <span>{isRtl ? "العودة للمتجر" : "Back to Store"}</span>
         </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:text-red-300 hover:bg-zinc-800 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-5 h-5 shrink-0" />
+          <span>{isRtl ? "تسجيل الخروج" : "Logout"}</span>
+        </button>
       </div>
     </aside>
   )
