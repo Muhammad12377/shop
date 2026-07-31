@@ -73,7 +73,7 @@ export type CartItem = {
   stock?: number
 }
 
-export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"
+export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled" | "fake"
 
 export type Order = {
   id: string

@@ -7,6 +7,7 @@ const STATUS_AR: Record<string, string> = {
   shipped: "تم الشحن",
   delivered: "تم التسليم",
   cancelled: "ملغي",
+  fake: "كاذب",
 }
 
 function escapeHtml(s: string | null | undefined): string {
@@ -32,6 +33,7 @@ export type TelegramEvent =
   | { type: "new_user"; email: string; name?: string | null }
   | { type: "new_review"; product: string; rating: number; comment?: string | null; user?: string | null }
   | { type: "low_stock"; product: string; stock: number }
+  | { type: "user_banned"; email: string; orders: number }
 
 export function formatTelegramMessage(ev: TelegramEvent): string {
   switch (ev.type) {
@@ -72,6 +74,8 @@ export function formatTelegramMessage(ev: TelegramEvent): string {
       return `⭐ <b>مراجعة جديدة</b>\nالمنتج: ${escapeHtml(ev.product)}\nالتقييم: ${"⭐".repeat(Math.min(5, Math.max(1, ev.rating)))}\n${ev.user ? `بواسطة: ${escapeHtml(ev.user)}\n` : ""}${ev.comment ? `التعليق: ${escapeHtml(ev.comment)}` : ""}`
     case "low_stock":
       return `⚠️ <b>تنبيه مخزون منخفض</b>\n${escapeHtml(ev.product)}\nالمتبقي: ${ev.stock}`
+    case "user_banned":
+      return `🚫 <b>حظر تلقائي</b>\nالبريد: ${escapeHtml(ev.email)}\nالسبب: ${ev.orders} طلبات كاذبة`
   }
 }
 

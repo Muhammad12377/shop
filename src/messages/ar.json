@@ -120,6 +120,7 @@
     "shipped": "تم الشحن",
     "delivered": "تم التوصيل",
     "cancelled": "ملغي",
+    "fake": "كاذب",
     "status_history": "سجل الحالة",
     "order_notes": "ملاحظات الطلب",
     "shipping_address": "عنوان التوصيل",

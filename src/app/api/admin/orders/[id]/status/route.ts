@@ -44,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const { data: order } = await supabase
       .from("orders")
-      .select("status, items")
+      .select("status, items, user_id")
       .eq("id", id)
       .single()
 
@@ -93,6 +93,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       await applyStock(supabase, order.items, 1)
     }
 
+    if (status === "fake" && movedOut) {
+      await applyStock(supabase, order.items, 1)
+    }
+
     if (note) {
       await supabase.from("order_status_history").insert({
         order_id: id,
@@ -100,6 +104,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         note,
         created_by: user.id,
       })
+    }
+
+    if (status === "fake") {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", order.user_id)
+        .eq("status", "fake")
+
+      if (count && count >= 5) {
+        await supabase.from("profiles").update({ blocked: true }).eq("id", order.user_id)
+        const { data: bannedProfile } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("id", order.user_id)
+          .single()
+        await notifyAdmin({
+          type: "user_banned",
+          email: bannedProfile?.email || order.user_id,
+          orders: count,
+        })
+      }
     }
 
     await notifyAdmin({ type: "order_status", id, status })

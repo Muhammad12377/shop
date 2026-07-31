@@ -120,6 +120,7 @@
     "shipped": "Shipped",
     "delivered": "Delivered",
     "cancelled": "Cancelled",
+    "fake": "Fake",
     "status_history": "Status History",
     "order_notes": "Order Notes",
     "shipping_address": "Shipping Address",

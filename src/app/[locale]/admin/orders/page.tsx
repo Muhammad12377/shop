@@ -6,7 +6,7 @@ import { colorLabel } from "@/lib/colors"
 import toast from "react-hot-toast"
 import type { Order } from "@/types"
 
-const statuses = ["all", "pending", "confirmed", "shipped", "delivered", "cancelled"]
+const statuses = ["all", "pending", "confirmed", "shipped", "delivered", "cancelled", "fake"]
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -14,6 +14,7 @@ const statusColors: Record<string, string> = {
   shipped: "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
+  fake: "bg-orange-100 text-orange-800",
 }
 
 const statusLabels: Record<string, { en: string; ar: string }> = {
@@ -23,6 +24,7 @@ const statusLabels: Record<string, { en: string; ar: string }> = {
   shipped: { en: "Shipped", ar: "تم الشحن" },
   delivered: { en: "Delivered", ar: "تم التوصيل" },
   cancelled: { en: "Cancelled", ar: "ملغي" },
+  fake: { en: "Fake", ar: "كاذب" },
 }
 
 export default function AdminOrdersPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
