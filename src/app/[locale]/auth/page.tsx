@@ -480,7 +480,7 @@ export default function AuthPage() {
                     </div>
                   </div>
 
-                  {mode === "login" && (
+                  {(mode === "login" || mode === "register") && (
                     <div>
                       <label className="block text-sm font-medium mb-1.5">{t("password")}</label>
                       <div className="relative">
