@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import Image from "next/image"
 import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon, Layers } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Product, ProductCategory, Media } from "@/types"
@@ -255,7 +256,9 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   <tr key={product.id} className="hover:bg-zinc-50">
                     <td className="px-4 py-3">
                       {product.images?.[0] ? (
-                        <img src={product.images[0]} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                        <div className="w-10 h-10 rounded-lg overflow-hidden relative">
+                          <Image src={product.images[0]} alt="" fill sizes="40px" className="object-cover" />
+                        </div>
                       ) : (
                         <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-300 text-xs">
                           {isRtl ? "لا" : "NA"}
@@ -552,7 +555,9 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {(form.images || []).map((url) => (
                     <div key={url} className="relative group">
-                      <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border" />
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border relative">
+                        <Image src={url} alt="" fill sizes="64px" className="object-cover" />
+                      </div>
                       <button
                         onClick={() => removeImage(url)}
                         className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -670,7 +675,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                           alreadyAdded ? "border-green-500 opacity-60" : "border-transparent hover:border-[#f97316]"
                         }`}
                       >
-                        <img src={item.url} alt={item.alt || ""} className="w-full h-full object-cover" />
+                        <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
                         {alreadyAdded && (
                           <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
                             <Check className="w-6 h-6 text-white" />

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
+import Image from "next/image"
 import { Upload, Trash2, Copy, Check, FileIcon, Loader2 } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Media } from "@/types"
@@ -177,12 +178,16 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
           {media.map((item) => (
             <div key={item.id} className="group relative bg-white rounded-xl border border-zinc-200 overflow-hidden">
               {isImage(item.url) ? (
-                <img
-                  src={item.url}
-                  alt={item.alt || ""}
-                  className="w-full aspect-square object-cover"
-                  loading="lazy"
-                />
+                <div className="relative w-full aspect-square">
+                  <Image
+                    src={item.url}
+                    alt={item.alt || ""}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+                    className="object-cover"
+                    loading="lazy"
+                  />
+                </div>
               ) : (
                 <div className="w-full aspect-square flex items-center justify-center bg-zinc-50">
                   <FileIcon className="w-10 h-10 text-zinc-300" />

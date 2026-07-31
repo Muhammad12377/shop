@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { revalidateTag } from "next/cache"
 import { createServerSupabase } from "@/lib/supabase/server"
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +19,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const { data, error } = await supabase.from("products").update(updateData).eq("id", id).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    revalidateTag("home", "max")
+    revalidateTag("products", "max")
     return NextResponse.json(data)
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
@@ -35,6 +38,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const { error } = await supabase.from("products").delete().eq("id", id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    revalidateTag("home", "max")
+    revalidateTag("products", "max")
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })

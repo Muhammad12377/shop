@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { Link } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
@@ -102,9 +103,9 @@ export default function WishlistPage() {
           if (!product) return null
           return (
             <div key={item.id} className="bg-white rounded-2xl border border-zinc-100 overflow-hidden group">
-              <Link href={`/product/${product.id}`} className="block aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center">
+              <Link href={`/product/${product.id}`} className="block aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
                 {product.images?.[0] ? (
-                  <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                  <Image src={product.images[0]} alt={isRtl ? product.name_ar || "" : product.name_en || ""} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
                 ) : (
                   <span className="text-zinc-400 text-sm">{isRtl ? "صورة" : "Image"}</span>
                 )}

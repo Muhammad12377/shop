@@ -1,9 +1,13 @@
 import { getTranslations } from "next-intl/server"
 import { Link } from "@/lib/i18n/navigation"
-import { createServerSupabase } from "@/lib/supabase/server"
+import Image from "next/image"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { ArrowRight, Sparkles, Shield, Truck } from "lucide-react"
+import { getCachedSettings, getCachedCategories, getCachedHomeProducts } from "@/lib/home-data"
+
+export const revalidate = 60
+export const dynamic = "force-static"
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -39,8 +43,7 @@ async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "home" })
   const isRtl = locale === "ar"
 
-  const supabase = await createServerSupabase()
-  const { data: settings } = await supabase.from("settings").select("*").single()
+  const settings = await getCachedSettings()
 
   const heroTitle = settings
     ? isRtl
@@ -131,12 +134,7 @@ async function CategoriesSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "home" })
   const isRtl = locale === "ar"
 
-  const supabase = await createServerSupabase()
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("active", true)
-    .order("sort_order")
+  const categories = await getCachedCategories()
 
   const colorMap: Record<string, string> = {
     men: "from-blue-900 to-blue-700",
@@ -179,27 +177,8 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "home" })
   const isRtl = locale === "ar"
 
-  const supabase = await createServerSupabase()
-  let { data: products } = await supabase
-    .from("products")
-    .select("*, category:categories(*)")
-    .eq("active", true)
-    .eq("featured", true)
-    .order("created_at", { ascending: false })
-    .limit(4)
-
-  if (!products || products.length === 0) {
-    const { data: latest } = await supabase
-      .from("products")
-      .select("*, category:categories(*)")
-      .eq("active", true)
-      .order("created_at", { ascending: false })
-      .limit(4)
-    products = latest
-  }
-
-  const fallback = !products || products.length === 0
-  const displayProducts = products || []
+  const displayProducts = await getCachedHomeProducts()
+  const fallback = displayProducts.length === 0
 
   return (
     <section className="py-16 bg-white">
@@ -219,7 +198,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
           </div>
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayProducts.map((product: any) => (
+          {displayProducts.map((product: any, i: number) => (
             <Link
               key={product.id}
               href={`/product/${product.id}`}
@@ -227,7 +206,14 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
             >
               <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
                 {product.images?.[0] ? (
-                  <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                  <Image
+                    src={product.images[0]}
+                    alt={isRtl ? product.name_ar || "" : product.name_en || ""}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-cover"
+                    priority={i < 4}
+                  />
                 ) : (
                   <span className="text-zinc-400 text-sm">
                     {isRtl ? "صورة المنتج" : "Product Image"}

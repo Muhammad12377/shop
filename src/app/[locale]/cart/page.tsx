@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
+import Image from "next/image"
 import { Link } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import Header from "@/components/layout/Header"
@@ -58,9 +59,9 @@ export default function CartPage() {
               key={item.id}
               className="flex items-center gap-4 bg-white rounded-2xl border border-zinc-100 p-4"
             >
-              <div className="w-20 h-20 rounded-xl bg-zinc-100 shrink-0 overflow-hidden">
+              <div className="w-20 h-20 rounded-xl bg-zinc-100 shrink-0 overflow-hidden relative">
                 {item.image ? (
-                  <img src={item.image} alt="" className="w-full h-full object-cover" />
+                  <Image src={item.image} alt={isRtl ? item.name_ar : item.name_en} fill sizes="80px" className="object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-zinc-200 to-zinc-300" />
                 )}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
+import { rateLimit } from "@/lib/rate-limit"
 import type { ApiResponse } from "@/types"
 
 async function requireAuth() {
@@ -24,6 +25,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+  const limited = rateLimit(ip, "orders", 5, 60)
+  if (!limited.allowed) {
+    return NextResponse.json({ success: false, error: "Too many orders, please try again later" } satisfies ApiResponse, { status: 429 })
+  }
+
   const auth = await requireAuth()
   if (!auth) return NextResponse.json({ success: false, error: "Unauthorized" } satisfies ApiResponse, { status: 401 })
 

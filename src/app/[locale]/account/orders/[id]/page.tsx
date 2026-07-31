@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
+import Image from "next/image"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Link } from "@/lib/i18n/navigation"
@@ -136,9 +137,9 @@ export default function OrderDetailPage() {
         <div className="space-y-3">
           {order.items?.map((item: any) => (
             <div key={item.id} className="flex items-center gap-4 py-3 border-b border-zinc-50 last:border-0">
-              <div className="w-14 h-14 rounded-xl bg-zinc-100 shrink-0 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-xl bg-zinc-100 shrink-0 flex items-center justify-center relative overflow-hidden">
                 {item.image ? (
-                  <img src={item.image} alt="" className="w-full h-full object-cover rounded-xl" />
+                  <Image src={item.image} alt={item.product_name || ""} fill sizes="56px" className="object-cover" />
                 ) : (
                   <Package className="w-5 h-5 text-zinc-400" />
                 )}

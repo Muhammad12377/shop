@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { revalidateTag } from "next/cache"
 import { createServerSupabase } from "@/lib/supabase/server"
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +20,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    revalidateTag("home", "max")
+    revalidateTag("products", "max")
     return NextResponse.json(data)
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })

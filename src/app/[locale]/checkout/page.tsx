@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
+import Image from "next/image"
 import { useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
@@ -358,9 +359,9 @@ export default function CheckoutPage() {
               <div className="space-y-3 mb-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-zinc-100 shrink-0 overflow-hidden">
+                    <div className="w-12 h-12 rounded-lg bg-zinc-100 shrink-0 overflow-hidden relative">
                       {item.image ? (
-                        <img src={item.image} alt="" className="w-full h-full object-cover" />
+                        <Image src={item.image} alt={isRtl ? item.name_ar : item.name_en} fill sizes="48px" className="object-cover" />
                       ) : null}
                     </div>
                     <div className="flex-1 min-w-0">

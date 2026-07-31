@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { revalidateTag } from "next/cache"
 import { createServerSupabase } from "@/lib/supabase/server"
 
 export async function GET() {
@@ -36,6 +37,7 @@ export async function PUT(req: Request) {
     }
 
     if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 })
+    revalidateTag("home", "max")
     return NextResponse.json(result.data)
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })

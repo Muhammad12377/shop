@@ -1,13 +1,16 @@
 import { getTranslations } from "next-intl/server"
 import { Link } from "@/lib/i18n/navigation"
-import { createServerSupabase } from "@/lib/supabase/server"
+import Image from "next/image"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
+import { getCachedCategories, getCachedProducts } from "@/lib/home-data"
+
+const PAGE_SIZE = 24
 
 type Props = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ q?: string; category?: string; sort?: string }>
+  searchParams: Promise<{ q?: string; category?: string; sort?: string; page?: string }>
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -19,48 +22,45 @@ export async function generateMetadata({ params }: Props) {
 export default async function ProductsPage({ params, searchParams }: Props) {
   const { locale } = await params
   const { q, category, sort } = await searchParams
+  const rawPage = Number((await searchParams).page) || 1
+  const page = Math.max(1, rawPage)
   const t = await getTranslations({ locale, namespace: "nav" })
-  const pt = await getTranslations({ locale, namespace: "product" })
   const isRtl = locale === "ar"
 
-  const supabase = await createServerSupabase()
+  const categories = await getCachedCategories()
+  const activeCat = category && category !== "all" ? categories.find((c: any) => c.slug === category) : undefined
 
-  let query = supabase
-    .from("products")
-    .select("*, category:categories(*)")
-    .eq("active", true)
+  const { products, total } = await getCachedProducts({
+    q,
+    categoryId: activeCat?.id,
+    sort,
+    page,
+    limit: PAGE_SIZE,
+  })
 
-  if (category && category !== "all") {
-    const { data: cat } = await supabase
-      .from("categories")
-      .select("id")
-      .eq("slug", category)
-      .single()
-    if (cat) {
-      query = query.eq("category_id", cat.id)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const buildUrl = (pageNum: number) => {
+    const sp = new URLSearchParams()
+    if (q) sp.set("q", q)
+    if (category && category !== "all") sp.set("category", category)
+    if (sort) sp.set("sort", sort)
+    if (pageNum > 1) sp.set("page", String(pageNum))
+    const qs = sp.toString()
+    return qs ? `/products?${qs}` : "/products"
+  }
+
+  const pageNumbers: number[] = []
+  for (let p = 1; p <= totalPages; p++) {
+    if (totalPages <= 7 || Math.abs(p - page) <= 2 || p === 1 || p === totalPages) {
+      pageNumbers.push(p)
     }
   }
-
-  if (q) {
-    const searchCol = isRtl ? "name_ar" : "name_en"
-    query = query.ilike(searchCol, `%${q}%`)
-  }
-
-  if (sort === "price-asc") {
-    query = query.order("price", { ascending: true })
-  } else if (sort === "price-desc") {
-    query = query.order("price", { ascending: false })
-  } else {
-    query = query.order("created_at", { ascending: false })
-  }
-
-  const { data: products, count } = await query
-
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("active", true)
-    .order("sort_order")
+  const withEllipsis: (number | "...")[] = []
+  pageNumbers.forEach((p, i) => {
+    if (i > 0 && p - pageNumbers[i - 1] > 1) withEllipsis.push("...")
+    withEllipsis.push(p)
+  })
 
   return (
     <>
@@ -133,7 +133,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold">{t("products")}</h1>
               <p className="text-sm text-zinc-500">
-                {isRtl ? `عرض ${count || 0} منتج` : `Showing ${count || 0} products`}
+                {isRtl ? `عرض ${total} منتج` : `Showing ${total} products`}
               </p>
             </div>
 
@@ -158,50 +158,113 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product: any) => (
-                  <Link
-                    key={product.id}
-                    href={`/product/${product.id}`}
-                    className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/30 hover:shadow-sm transition-all"
-                  >
-                    <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
-                      {product.images?.[0] ? (
-                        <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-zinc-400 text-sm">
-                          {isRtl ? "صورة المنتج" : "Product Image"}
-                        </span>
-                      )}
-                      {product.compare_price && (
-                        <span className="absolute top-3 left-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
-                          {Math.round((1 - product.price / product.compare_price) * 100)}% OFF
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <p className="text-xs text-zinc-400 mb-1">
-                        {product.category
-                          ? isRtl
-                            ? product.category.name_ar
-                            : product.category.name_en
-                          : ""}
-                      </p>
-                      <h3 className="font-medium group-hover:text-accent transition-colors truncate">
-                        {isRtl ? product.name_ar : product.name_en}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-accent font-bold">${product.price}</p>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.map((product: any) => (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.id}`}
+                      className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/30 hover:shadow-sm transition-all"
+                    >
+                      <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
+                        {product.images?.[0] ? (
+                          <Image
+                            src={product.images[0]}
+                            alt={isRtl ? product.name_ar || "" : product.name_en || ""}
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <span className="text-zinc-400 text-sm">
+                            {isRtl ? "صورة المنتج" : "Product Image"}
+                          </span>
+                        )}
                         {product.compare_price && (
-                          <p className="text-xs text-zinc-400 line-through">
-                            ${product.compare_price}
-                          </p>
+                          <span className="absolute top-3 left-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
+                            {Math.round((1 - product.price / product.compare_price) * 100)}% OFF
+                          </span>
                         )}
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      <div className="p-4">
+                        <p className="text-xs text-zinc-400 mb-1">
+                          {product.category
+                            ? isRtl
+                              ? product.category.name_ar
+                              : product.category.name_en
+                            : ""}
+                        </p>
+                        <h3 className="font-medium group-hover:text-accent transition-colors truncate">
+                          {isRtl ? product.name_ar : product.name_en}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-accent font-bold">${product.price}</p>
+                          {product.compare_price && (
+                            <p className="text-xs text-zinc-400 line-through">
+                              ${product.compare_price}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {totalPages > 1 && (
+                  <nav className="flex items-center justify-center gap-1 mt-10" aria-label="Pagination">
+                    {page > 1 ? (
+                      <Link
+                        href={buildUrl(page - 1)}
+                        className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-zinc-200 hover:border-accent hover:text-accent transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        {isRtl ? "السابق" : "Previous"}
+                      </Link>
+                    ) : (
+                      <span className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-zinc-100 text-zinc-300 cursor-not-allowed">
+                        <ChevronLeft className="w-4 h-4" />
+                        {isRtl ? "السابق" : "Previous"}
+                      </span>
+                    )}
+
+                    {withEllipsis.map((p, i) =>
+                      p === "..." ? (
+                        <span key={`e${i}`} className="px-2 py-2 text-sm text-zinc-400">
+                          ...
+                        </span>
+                      ) : (
+                        <Link
+                          key={p}
+                          href={buildUrl(p)}
+                          aria-current={p === page ? "page" : undefined}
+                          className={`w-9 h-9 flex items-center justify-center text-sm rounded-lg transition-colors ${
+                            p === page
+                              ? "bg-accent text-white font-medium"
+                              : "border border-zinc-200 hover:border-accent hover:text-accent"
+                          }`}
+                        >
+                          {p}
+                        </Link>
+                      )
+                    )}
+
+                    {page < totalPages ? (
+                      <Link
+                        href={buildUrl(page + 1)}
+                        className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-zinc-200 hover:border-accent hover:text-accent transition-colors"
+                      >
+                        {isRtl ? "التالي" : "Next"}
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    ) : (
+                      <span className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-zinc-100 text-zinc-300 cursor-not-allowed">
+                        {isRtl ? "التالي" : "Next"}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </nav>
+                )}
+              </>
             )}
           </div>
         </div>
