@@ -61,6 +61,17 @@ export default function AuthPage() {
     return () => clearInterval(timer)
   }, [otpTimer])
 
+  const friendlyError = (err: any) => {
+    const m = err?.message || ""
+    const match = m.match(/only request this after (\d+) seconds?/i)
+    if (match) {
+      return isRtl
+        ? `لأسباب أمنية، أعد المحاولة بعد ${match[1]} ثانية`
+        : `For security reasons, try again in ${match[1]} seconds`
+    }
+    return m
+  }
+
   const sendOtp = async (target: string, origin: OtpOrigin) => {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOtp({
@@ -80,7 +91,7 @@ export default function AuthPage() {
       await sendOtp(otpEmail, otpOrigin)
       toast.success(isRtl ? "تم إعادة إرسال الرمز" : "Code resent")
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(friendlyError(err))
     }
   }
 
@@ -150,7 +161,7 @@ export default function AuthPage() {
       await sendOtp(email.trim(), "forgot")
       toast.success(isRtl ? "أرسلنا رمز التحقق إلى بريدك" : "Verification code sent to your email")
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(friendlyError(err))
     } finally {
       setLoading(false)
     }
@@ -232,7 +243,7 @@ export default function AuthPage() {
         router.refresh()
       }
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(friendlyError(err))
       if (mode === "register") {
         setCaptchaToken(null)
         setCaptchaResetKey((k) => k + 1)
