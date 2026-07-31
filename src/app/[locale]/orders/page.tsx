@@ -4,6 +4,7 @@ import Footer from "@/components/layout/Footer"
 import { createServerSupabase } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Package } from "lucide-react"
+import CancelOrderButton from "@/components/orders/CancelOrderButton"
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -54,7 +55,7 @@ export default async function OrdersPage({ params }: Props) {
                   <div>
                     <p className="text-sm text-zinc-500">{t("order_id")}: #{order.id.slice(0, 8)}</p>
                     <p className="text-sm text-zinc-500">
-                      {t("date")}: {new Date(order.created_at).toLocaleDateString(isRtl ? "ar" : "en-US")}
+                      {t("date")}: {new Date(order.created_at).toLocaleString(isRtl ? "ar" : "en-US")}
                     </p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || "bg-zinc-100 text-zinc-800"}`}>
@@ -65,7 +66,10 @@ export default async function OrdersPage({ params }: Props) {
                   <p className="text-sm text-zinc-500">
                     {order.items?.length || 0} {isRtl ? "منتج" : "items"}
                   </p>
-                  <p className="text-lg font-bold text-accent">${order.total?.toFixed(2)}</p>
+                  <div className="flex items-center gap-4">
+                    <p className="text-lg font-bold text-accent">${order.total?.toFixed(2)}</p>
+                    <CancelOrderButton orderId={order.id} status={order.status} isRtl={isRtl} />
+                  </div>
                 </div>
               </div>
             ))}

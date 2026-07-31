@@ -6,8 +6,9 @@ import Image from "next/image"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Link } from "@/lib/i18n/navigation"
-import { ArrowLeft, Package } from "lucide-react"
+import { ArrowLeft, Package, XCircle } from "lucide-react"
 import { colorLabel } from "@/lib/colors"
+import toast from "react-hot-toast"
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -26,10 +27,11 @@ export default function OrderDetailPage() {
   const [history, setHistory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
   const locale = useLocale()
   const isRtl = locale === "ar"
 
-  useEffect(() => {
+  const loadOrder = async () => {
     const supabase = createClient()
     supabase
       .from("orders")
@@ -49,7 +51,32 @@ export default function OrderDetailPage() {
             setLoading(false)
           })
       })
-  }, [params.id])
+  }
+
+  useEffect(() => { loadOrder() }, [params.id])
+
+  const handleCancel = async () => {
+    if (!order || order.status !== "pending") return
+    const ok = confirm(
+      isRtl
+        ? "هل أنت متأكد من إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء."
+        : "Are you sure you want to cancel this order? This action cannot be undone."
+    )
+    if (!ok) return
+    setCancelling(true)
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, { method: "PATCH" })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || "Error")
+      toast.success(isRtl ? "تم إلغاء الطلب" : "Order cancelled")
+      setOrder((prev: any) => ({ ...prev, status: "cancelled" }))
+      loadOrder()
+    } catch (err: any) {
+      toast.error(err.message || (isRtl ? "خطأ" : "Error"))
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -97,6 +124,26 @@ export default function OrderDetailPage() {
             {t(order.status)}
           </span>
         </div>
+
+        {order.status === "pending" && (
+          <div className="border-t border-zinc-100 pt-4 flex items-center justify-between">
+            <p className="text-sm text-zinc-500">
+              {isRtl
+                ? "يمكنك إلغاء هذا الطلب ما دام لم يُؤكد بعد."
+                : "You can cancel this order while it is still pending."}
+            </p>
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <XCircle className="w-4 h-4" />
+              {cancelling
+                ? isRtl ? "جارٍ الإلغاء..." : "Cancelling..."
+                : isRtl ? "إلغاء الطلب" : "Cancel Order"}
+            </button>
+          </div>
+        )}
 
         <div className="border-t border-zinc-100 pt-6">
           <h3 className="font-medium mb-4">{t("status_history")}</h3>
