@@ -71,7 +71,7 @@ export default function AdminDashboardPage({ params: paramsPromise }: { params: 
 
   const statCards = [
     { label: isRtl ? "إجمالي الطلبات" : "Total Orders", value: stats?.total_orders ?? 0, icon: ShoppingBag, color: "bg-blue-500" },
-    { label: isRtl ? "إجمالي الإيرادات" : "Total Revenue", value: `$${(stats?.total_revenue ?? 0).toFixed(2)}`, icon: DollarSign, color: "bg-green-500" },
+    { label: isRtl ? "الإيرادات (تم التوصيل)" : "Revenue (Delivered)", value: `$${(stats?.total_revenue ?? 0).toFixed(2)}`, icon: DollarSign, color: "bg-green-500" },
     { label: isRtl ? "المنتجات" : "Products", value: stats?.total_products ?? 0, icon: Package, color: "bg-[#f97316]" },
     { label: isRtl ? "المستخدمين" : "Users", value: stats?.total_users ?? 0, icon: Users, color: "bg-purple-500" },
     { label: isRtl ? "طلبات معلقة" : "Pending Orders", value: stats?.pending_orders ?? 0, icon: Clock, color: "bg-yellow-500" },

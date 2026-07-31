@@ -16,7 +16,8 @@ export async function GET() {
     const { count: totalCoupons } = await supabase.from("coupons").select("*", { count: "exact", head: true })
 
     const { data: allOrders } = await supabase.from("orders").select("total, status, created_at")
-    const totalRevenue = allOrders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0
+    const deliveredOrders = allOrders?.filter((o) => o.status === "delivered") || []
+    const totalRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0) || 0
     const pendingOrders = allOrders?.filter((o) => o.status === "pending").length || 0
 
     const stockResult = await supabase.from("products").select("stock")
@@ -35,8 +36,10 @@ export async function GET() {
       const monthMap: Record<string, number> = {}
       const statusMap: Record<string, number> = {}
       allOrders.forEach((o) => {
-        const m = o.created_at?.slice(0, 7)
-        if (m) monthMap[m] = (monthMap[m] || 0) + (o.total || 0)
+        if (o.status === "delivered") {
+          const m = o.created_at?.slice(0, 7)
+          if (m) monthMap[m] = (monthMap[m] || 0) + (o.total || 0)
+        }
         const s = o.status || "unknown"
         statusMap[s] = (statusMap[s] || 0) + 1
       })
