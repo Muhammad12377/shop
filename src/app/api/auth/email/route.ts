@@ -34,10 +34,8 @@ function verifySignature(payload: string, headers: Headers): boolean {
     .update(`${id}.${ts}.${payload}`)
     .digest("base64")
 
-  return signatureHeader.split(",").some((sig) => {
-    const s = sig.trim()
-    return s.startsWith("v1,") && safeEqual(s.slice(3), expected)
-  })
+  const signatures = signatureHeader.match(/v1,[A-Za-z0-9+/=]+/g) || []
+  return signatures.some((s) => safeEqual(s.slice(3), expected))
 }
 
 const TYPE_LABEL: Record<string, string> = {
