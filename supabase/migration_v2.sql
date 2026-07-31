@@ -38,20 +38,33 @@ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
 -- Recreate policies for v1 tables
+-- Helper: SECURITY DEFINER function to check admin role without RLS recursion
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
+
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
-CREATE POLICY "Admins can update all profiles" ON profiles FOR UPDATE USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')) WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can update all profiles" ON profiles FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
 
-CREATE POLICY "Categories are viewable by everyone" ON categories FOR SELECT USING (active = true OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
-CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Categories are viewable by everyone" ON categories FOR SELECT USING (active = true OR public.is_admin());
+CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (public.is_admin());
 
-CREATE POLICY "Products are viewable by everyone" ON products FOR SELECT USING (active = true OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
-CREATE POLICY "Admins can manage products" ON products FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Products are viewable by everyone" ON products FOR SELECT USING (active = true OR public.is_admin());
+CREATE POLICY "Admins can manage products" ON products FOR ALL USING (public.is_admin());
 
 CREATE POLICY "Users can view own orders" ON orders FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own orders" ON orders FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Admins can view all orders" ON orders FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can view all orders" ON orders FOR ALL USING (public.is_admin());
 
 -- New table: addresses
 CREATE TABLE IF NOT EXISTS addresses (
@@ -67,7 +80,7 @@ CREATE TABLE IF NOT EXISTS addresses (
 );
 ALTER TABLE addresses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own addresses" ON addresses FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Admins can view all addresses" ON addresses FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can view all addresses" ON addresses FOR SELECT USING (public.is_admin());
 
 -- New table: wishlists
 CREATE TABLE IF NOT EXISTS wishlists (
@@ -110,7 +123,7 @@ CREATE TABLE IF NOT EXISTS coupons (
 );
 ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Coupons are viewable by everyone" ON coupons FOR SELECT USING (active = true AND (expires_at IS NULL OR expires_at > now()) AND (max_uses = 0 OR used_count < max_uses));
-CREATE POLICY "Admins can manage coupons" ON coupons FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can manage coupons" ON coupons FOR ALL USING (public.is_admin());
 
 -- New table: settings
 CREATE TABLE IF NOT EXISTS settings (
@@ -120,7 +133,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Settings are viewable by everyone" ON settings FOR SELECT USING (true);
-CREATE POLICY "Admins can manage settings" ON settings FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can manage settings" ON settings FOR ALL USING (public.is_admin());
 
 -- New table: order_status_history
 CREATE TABLE IF NOT EXISTS order_status_history (
@@ -133,7 +146,7 @@ CREATE TABLE IF NOT EXISTS order_status_history (
 );
 ALTER TABLE order_status_history ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Status history viewable by involved" ON order_status_history FOR SELECT USING (auth.uid() IN (SELECT user_id FROM orders WHERE id = order_id UNION SELECT id FROM profiles WHERE role = 'admin'));
-CREATE POLICY "Admins can create status history" ON order_status_history FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can create status history" ON order_status_history FOR INSERT WITH CHECK (public.is_admin());
 
 -- New table: product_variants
 CREATE TABLE IF NOT EXISTS product_variants (
@@ -146,7 +159,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
 );
 ALTER TABLE product_variants ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Variants are viewable by everyone" ON product_variants FOR SELECT USING (true);
-CREATE POLICY "Admins can manage variants" ON product_variants FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can manage variants" ON product_variants FOR ALL USING (public.is_admin());
 
 -- New table: media
 CREATE TABLE IF NOT EXISTS media (
@@ -157,7 +170,7 @@ CREATE TABLE IF NOT EXISTS media (
 );
 ALTER TABLE media ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Media viewable by everyone" ON media FOR SELECT USING (true);
-CREATE POLICY "Admins can manage media" ON media FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can manage media" ON media FOR ALL USING (public.is_admin());
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
