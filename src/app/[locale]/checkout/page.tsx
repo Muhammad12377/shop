@@ -123,7 +123,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/coupons/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponCode.trim(), order_total: subtotal }),
+        body: JSON.stringify({ code: couponCode.trim(), total: subtotal }),
       })
       const result = await res.json()
       if (!result.success) {
@@ -132,7 +132,9 @@ export default function CheckoutPage() {
         return
       }
       setAppliedCoupon(result.data)
-      if (result.data.discount_type === "percentage") {
+      if (result.data.discount_amount != null) {
+        setDiscount(Number(result.data.discount_amount))
+      } else if (result.data.discount_type === "percentage") {
         setDiscount((subtotal * result.data.discount_value) / 100)
       } else {
         setDiscount(result.data.discount_value)
