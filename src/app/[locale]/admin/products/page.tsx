@@ -189,7 +189,17 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   }
 
   const setColor = (c: string) => {
-    setForm({ ...form, colors: [c] })
+    if (!c) return
+    setForm({
+      ...form,
+      colors: (form.colors || []).includes(c)
+        ? (form.colors || []).filter((x) => x !== c)
+        : [...(form.colors || []), c],
+    })
+  }
+
+  const removeColor = (c: string) => {
+    setForm({ ...form, colors: (form.colors || []).filter((x) => x !== c) })
   }
 
   const addImage = () => {
@@ -500,14 +510,14 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-2">
-                  {isRtl ? "اللون (لون واحد فقط — الألوان الأخرى تُضاف كمنتج منفصل بنفس الاسم)" : "Color (single color — other colors are added as a separate product with the same name)"}
+                  {isRtl ? "الألوان (اختر لونًا واحدًا أو أكثر)" : "Colors (pick one or more)"}
                 </label>
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {(form.colors || []).map((c) => (
                     <span key={c} className="inline-flex items-center gap-1.5 px-2 py-1 bg-zinc-100 rounded-md text-xs">
                       <span className="w-4 h-4 rounded-full inline-block border border-zinc-200" style={{ background: colorBackground(c) }} />
                       {colorLabel(c)}
-                      <button onClick={() => setColor("")} className="cursor-pointer"><X className="w-3 h-3" /></button>
+                      <button onClick={() => removeColor(c)} className="cursor-pointer"><X className="w-3 h-3" /></button>
                     </span>
                   ))}
                 </div>
@@ -518,7 +528,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                       type="button"
                       onClick={() => setColor(c)}
                       className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
-                        (form.colors || [])[0] === c ? "border-[#f97316] scale-110" : "border-zinc-200"
+                        (form.colors || []).includes(c) ? "border-[#f97316] scale-110" : "border-zinc-200"
                       }`}
                       style={{ backgroundColor: c }}
                       title={c}
@@ -535,7 +545,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   <input
                     type="text"
                     value={colorInput}
-                    onChange={(e) => { setColorInput(e.target.value); setColor(e.target.value) }}
+                    onChange={(e) => setColorInput(e.target.value)}
                     placeholder={isRtl ? "كود اللون #hex" : "Color code #hex"}
                     className="flex-1 px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                   />

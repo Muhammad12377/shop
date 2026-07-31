@@ -22,6 +22,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
   const initialSize =
     (product?.sizes || []).find((s: string) => sizeQty(s) > 0) || product?.sizes?.[0] || ""
   const [selectedSize, setSelectedSize] = useState(initialSize)
+  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || "")
   const [selectedImage, setSelectedImage] = useState(0)
   const [showVideo, setShowVideo] = useState(false)
   const [inWishlist, setInWishlist] = useState(false)
@@ -80,7 +81,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
       price: product.price,
       image: product.images?.[0] || "",
       size: selectedSize,
-      color: product.colors?.[0] || "",
+      color: selectedColor,
       quantity: 1,
       slug: product.slug,
       stock: hasPerSize ? sizeQty(selectedSize) : product.stock,
@@ -242,43 +243,51 @@ export default function ProductView({ product, siblings }: { product: any; sibli
               <p className="text-sm font-medium mb-3">{t("colors")}</p>
               <div className="flex gap-2 items-center">
                 {(product.colors || []).map((color: string) => (
-                  <span
+                  <button
                     key={color}
-                    className="w-8 h-8 rounded-full border-2 border-accent scale-110"
+                    onClick={() => setSelectedColor(color)}
+                    className={`w-8 h-8 rounded-full border-2 transition-colors ${
+                      selectedColor === color ? "border-accent scale-110" : "border-zinc-200"
+                    }`}
                     style={{ background: colorBackground(color) }}
                     title={colorLabel(color)}
                   />
                 ))}
-                {(siblings || []).map((sib: any) => {
-                  const sibColor = sib.colors?.[0]
-                  return (
-                    <Link
-                      key={sib.id}
-                      href={`/product/${sib.id}`}
-                      title={isRtl ? sib.name_ar : sib.name_en}
-                      className={`w-8 h-8 rounded-full border-2 transition-colors hover:scale-110 overflow-hidden ${
-                        sibColor ? "" : "flex items-center justify-center"
-                      } border-zinc-300 hover:border-accent relative`}
-                    >
-                      {sibColor ? (
-                        <span className="block w-full h-full" style={{ background: colorBackground(sibColor) }} />
-                      ) : sib.images?.[0] ? (
-                        <Image src={sib.images[0]} alt="" fill sizes="32px" className="object-cover" />
-                      ) : (
-                        <span className="text-[9px] text-zinc-400">{isRtl ? "لون" : "Color"}</span>
-                      )}
-                    </Link>
-                  )
-                })}
+                {(siblings || []).length > 0 && (
+                  <>
+                    <span className="w-px h-6 bg-zinc-200 mx-1" />
+                    {(siblings || []).map((sib: any) => {
+                      const sibColor = sib.colors?.[0]
+                      return (
+                        <Link
+                          key={sib.id}
+                          href={`/product/${sib.id}`}
+                          title={isRtl ? sib.name_ar : sib.name_en}
+                          className={`w-8 h-8 rounded-full border-2 transition-colors hover:scale-110 overflow-hidden ${
+                            sibColor ? "" : "flex items-center justify-center"
+                          } border-zinc-300 hover:border-accent relative`}
+                        >
+                          {sibColor ? (
+                            <span className="block w-full h-full" style={{ background: colorBackground(sibColor) }} />
+                          ) : sib.images?.[0] ? (
+                            <Image src={sib.images[0]} alt="" fill sizes="32px" className="object-cover" />
+                          ) : (
+                            <span className="text-[9px] text-zinc-400">{isRtl ? "لون" : "Color"}</span>
+                          )}
+                        </Link>
+                      )
+                    })}
+                  </>
+                )}
               </div>
               <p className="text-xs text-zinc-400 mt-2">
                 {isRtl
                   ? siblings?.length
-                    ? `متوفر بألوان أخرى: اضغط على اللون للانتقال للمنتج`
-                    : "هذا اللون هو المتوفر الوحيد"
+                    ? "منتجات أخرى بنفس الاسم: اضغط على اللون للانتقال للمنتج"
+                    : "اضغط على لون لتغييره"
                   : siblings?.length
-                    ? "Available in other colors: click a color to view it"
-                    : "This is the only available color"}
+                    ? "Other products with the same name: click a color to view"
+                    : "Click a color to change it"}
               </p>
             </div>
 
