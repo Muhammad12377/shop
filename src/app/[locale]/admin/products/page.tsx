@@ -1,9 +1,16 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon } from "lucide-react"
 import toast from "react-hot-toast"
-import type { Product, ProductCategory } from "@/types"
+import type { Product, ProductCategory, Media } from "@/types"
+
+const presetColors = [
+  "#ffffff", "#000000", "#f5f5f5", "#9ca3af", "#6b7280", "#374151",
+  "#ef4444", "#f97316", "#f59e0b", "#facc15", "#eab308", "#a3e635",
+  "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6",
+  "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
+]
 
 const defaultProduct: Partial<Product> = {
   name_en: "",
@@ -25,6 +32,8 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const [locale, setLocale] = useState("en")
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [mediaItems, setMediaItems] = useState<Media[]>([])
+  const [mediaModalOpen, setMediaModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
@@ -55,9 +64,17 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     } catch {}
   }, [])
 
+  const fetchMedia = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/media")
+      const data = await res.json()
+      if (Array.isArray(data)) setMediaItems(data)
+    } catch {}
+  }, [])
+
   useEffect(() => {
-    Promise.all([fetchProducts(), fetchCategories()]).finally(() => setLoading(false))
-  }, [fetchProducts, fetchCategories])
+    Promise.all([fetchProducts(), fetchCategories(), fetchMedia()]).finally(() => setLoading(false))
+  }, [fetchProducts, fetchCategories, fetchMedia])
 
   const filtered = products.filter((p) => {
     if (!search) return true
@@ -425,14 +442,32 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "الألوان" : "Colors"}</label>
-                <div className="flex gap-2 mb-2 flex-wrap">
+                <label className="block text-sm font-medium text-zinc-700 mb-2">{isRtl ? "الألوان (اضغط على اللون للإضافة)" : "Colors (click a color to add)"}</label>
+                <div className="flex gap-2 mb-3 flex-wrap">
                   {(form.colors || []).map((c) => (
-                    <span key={c} className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-100 rounded-md text-xs">
-                      <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: c }} />
+                    <span key={c} className="inline-flex items-center gap-1.5 px-2 py-1 bg-zinc-100 rounded-md text-xs">
+                      <span className="w-4 h-4 rounded-full inline-block border border-zinc-200" style={{ backgroundColor: c }} />
                       {c}
                       <button onClick={() => removeColor(c)} className="cursor-pointer"><X className="w-3 h-3" /></button>
                     </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {presetColors.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        if (!(form.colors || []).includes(c)) {
+                          setForm({ ...form, colors: [...(form.colors || []), c] })
+                        }
+                      }}
+                      className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
+                        (form.colors || []).includes(c) ? "border-[#f97316] scale-110" : "border-zinc-200"
+                      }`}
+                      style={{ backgroundColor: c }}
+                      title={c}
+                    />
                   ))}
                 </div>
                 <div className="flex gap-2">
@@ -446,18 +481,21 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                     type="text"
                     value={colorInput}
                     onChange={(e) => setColorInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addColor())}
-                    placeholder="#hex"
+                    placeholder={isRtl ? "كود اللون #hex" : "Color code #hex"}
                     className="flex-1 px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                   />
-                  <button onClick={addColor} className="px-3 py-2 bg-zinc-100 rounded-lg text-sm hover:bg-zinc-200 cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={addColor}
+                    className="px-3 py-2 bg-[#f97316] text-white rounded-lg text-sm hover:bg-[#fb923c] cursor-pointer"
+                  >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "الصور" : "Images"}</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">{isRtl ? "الصور" : "Images"}</label>
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {(form.images || []).map((url) => (
                     <div key={url} className="relative group">
@@ -471,7 +509,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mb-2">
                   <input
                     type="text"
                     value={imageInput}
@@ -483,7 +521,20 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   <button onClick={addImage} className="px-3 py-2 bg-zinc-100 rounded-lg text-sm hover:bg-zinc-200 cursor-pointer">
                     <Plus className="w-4 h-4" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-[#f97316]/10 text-[#f97316] rounded-lg text-sm font-medium hover:bg-[#f97316]/20 cursor-pointer"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {isRtl ? "من المكتبة" : "From Library"}
+                  </button>
                 </div>
+                {mediaItems.length === 0 && (
+                  <p className="text-xs text-zinc-400">
+                    {isRtl ? "لا توجد صور في المكتبة — ارفع صورًا من صفحة الوسائط أولاً" : "No images in library yet — upload some from the Media page first"}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-6">
@@ -523,6 +574,60 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isRtl ? "حفظ" : "Save"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mediaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 pb-10">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setMediaModalOpen(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto z-10">
+            <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{isRtl ? "اختر صورة من المكتبة" : "Choose an image from library"}</h2>
+              <button onClick={() => setMediaModalOpen(false)} className="p-1 hover:bg-zinc-100 rounded-lg cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {mediaItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileIcon className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
+                  <p className="text-zinc-400">{isRtl ? "لا توجد صور في المكتبة" : "No images in library"}</p>
+                  <p className="text-sm text-zinc-300 mt-1">
+                    {isRtl ? "ارفع الصور أولاً من صفحة الوسائط" : "Upload images first from the Media page"}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {mediaItems.map((item) => {
+                    const alreadyAdded = (form.images || []).includes(item.url)
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        disabled={alreadyAdded}
+                        onClick={() => {
+                          if (!alreadyAdded) {
+                            setForm({ ...form, images: [...(form.images || []), item.url] })
+                            toast.success(isRtl ? "تمت الإضافة" : "Added")
+                          }
+                        }}
+                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                          alreadyAdded ? "border-green-500 opacity-60" : "border-transparent hover:border-[#f97316]"
+                        }`}
+                      >
+                        <img src={item.url} alt={item.alt || ""} className="w-full h-full object-cover" />
+                        {alreadyAdded && (
+                          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                            <Check className="w-6 h-6 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
