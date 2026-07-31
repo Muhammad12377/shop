@@ -6,9 +6,9 @@ import { useRouter } from "@/lib/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
-import { Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Mail, Lock, User, Eye, EyeOff, Loader2, ShieldCheck, ArrowRight } from "lucide-react"
 
-type AuthMode = "login" | "register"
+type AuthMode = "login" | "register" | "otp"
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -22,7 +22,10 @@ const GoogleIcon = () => (
 export default function AuthPage() {
   const t = useTranslations("auth")
   const router = useRouter()
+  const locale = useLocale()
+  const isRtl = locale === "ar"
   const [mode, setMode] = useState<AuthMode>("login")
+  const [otpOrigin, setOtpOrigin] = useState<"login" | "register">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
@@ -30,26 +33,100 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [blockedNotice, setBlockedNotice] = useState(false)
+  const [otpEmail, setOtpEmail] = useState("")
+  const [otpCode, setOtpCode] = useState("")
+  const [otpTimer, setOtpTimer] = useState(0)
+  const [verifying, setVerifying] = useState(false)
 
   useEffect(() => {
     if (window.location.search.includes("blocked=1")) setBlockedNotice(true)
   }, [])
 
+  useEffect(() => {
+    if (otpTimer <= 0) return
+    const timer = setInterval(() => setOtpTimer((s) => s - 1), 1000)
+    return () => clearInterval(timer)
+  }, [otpTimer])
+
+  const sendOtp = async (target: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email: target,
+      options: { shouldCreateUser: false },
+    })
+    if (error) throw error
+    setOtpEmail(target)
+    setOtpCode("")
+    setOtpTimer(60)
+    setMode("otp")
+  }
+
+  const handleOtpLogin = async () => {
+    if (!email.trim()) {
+      toast.error(isRtl ? "أدخل بريدك الإلكتروني أولًا" : "Enter your email first")
+      return
+    }
+    setLoading(true)
+    try {
+      await sendOtp(email.trim())
+      setOtpOrigin("login")
+      toast.success(isRtl ? "تم إرسال رمز التحقق إلى بريدك" : "Verification code sent to your email")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    try {
+      await sendOtp(otpEmail)
+      toast.success(isRtl ? "تم إعادة إرسال الرمز" : "Code resent")
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (otpCode.trim().length !== 6) {
+      toast.error(isRtl ? "أدخل الرمز المكوّن من 6 أرقام" : "Enter the 6-digit code")
+      return
+    }
+    setVerifying(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.verifyOtp({
+        email: otpEmail,
+        token: otpCode.trim(),
+        type: "email",
+      })
+      if (error) throw error
+      toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
+      router.push("/")
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setVerifying(false)
+    }
+  }
+
   const handleGoogle = async () => {
     setGoogleLoading(true)
     const supabase = createClient()
     try {
-      const locale = window.location.pathname.split("/")[1] === "ar" ? "ar" : "en"
+      const l = window.location.pathname.split("/")[1] === "ar" ? "ar" : "en"
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback?next=/${locale}/account`,
+          redirectTo: `${window.location.origin}/api/auth/callback?next=/${l}/account`,
         },
       })
       if (error) throw error
     } catch (err: any) {
       if (err.message?.toLowerCase().includes("not enabled")) {
-        toast.error(locale === "ar" ? "تسجيل الدخول بغوغل غير مفعل بعد" : "Google sign-in is not enabled yet")
+        toast.error(isRtl ? "تسجيل الدخول بغوغل غير مفعل بعد" : "Google sign-in is not enabled yet")
       } else {
         toast.error(err.message)
       }
@@ -70,8 +147,9 @@ export default function AuthPage() {
           options: { data: { full_name: name } },
         })
         if (error) throw error
-        toast.success("Account created! Check your email to verify.")
-        router.push("/auth")
+        await sendOtp(email)
+        setOtpOrigin("register")
+        toast.success(isRtl ? "تم إنشاء الحساب! أدخل رمز التحقق المرسل إلى بريدك" : "Account created! Enter the code sent to your email")
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
@@ -82,7 +160,7 @@ export default function AuthPage() {
           .single()
         if (profile?.blocked) {
           await supabase.auth.signOut()
-          toast.error(locale === "ar" ? "تم حظر حسابك" : "Your account has been blocked")
+          toast.error(isRtl ? "تم حظر حسابك" : "Your account has been blocked")
           return
         }
         toast.success("Welcome back!")
@@ -96,9 +174,6 @@ export default function AuthPage() {
     }
   }
 
-  const locale = useLocale()
-  const isRtl = locale === "ar"
-
   return (
     <>
       <Header />
@@ -106,13 +181,17 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-8">
             <h1 className="text-2xl font-bold text-center mb-2">
-              {mode === "login" ? t("login_title") : t("register_title")}
+              {mode === "otp"
+                ? isRtl ? "رمز التحقق" : "Verification Code"
+                : mode === "login" ? t("login_title") : t("register_title")}
             </h1>
             <p className="text-zinc-500 text-sm text-center mb-8">
-              {mode === "login" ? "Sneakers Club Syria" : "Sneakers Club Syria"}
+              {mode === "otp"
+                ? isRtl ? "أدخل الرمز المكوّن من 6 أرقام" : "Enter the 6-digit code"
+                : "Sneakers Club Syria"}
             </p>
 
-            {blockedNotice && (
+            {blockedNotice && mode !== "otp" && (
               <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 text-center">
                 {isRtl
                   ? "تم حظر حسابك. تواصل مع الإدارة للمزيد من المعلومات."
@@ -120,101 +199,175 @@ export default function AuthPage() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleGoogle}
-              disabled={googleLoading}
-              className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
-            >
-              {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleIcon />}
-              {t("continue_with_google")}
-            </button>
-
-            <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-zinc-200" />
-              <span className="text-xs text-zinc-400">{isRtl ? "أو" : "or"}</span>
-              <div className="flex-1 h-px bg-zinc-200" />
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {mode === "register" && (
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">{t("name")}</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
-                      required
-                    />
-                  </div>
+            {mode === "otp" ? (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="p-3 rounded-xl bg-[#f97316]/5 border border-[#f97316]/15 text-sm text-zinc-600 text-center">
+                  <ShieldCheck className="w-4 h-4 inline-block text-[#f97316] mb-1" />
+                  <p className="break-all" dir="ltr">{otpEmail}</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {isRtl ? "أرسلنا رمزًا مكوّنًا من 6 أرقام إلى بريدك" : "We sent a 6-digit code to your email"}
+                  </p>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("email")}</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
-                    required
-                  />
-                </div>
-              </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="••••••"
+                  className="w-full text-center text-2xl font-bold tracking-[0.5em] pl-9 pr-9 py-3 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent"
+                />
 
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("password")}</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
-                    required
-                    minLength={6}
-                  />
+                <button
+                  type="submit"
+                  disabled={verifying || otpCode.length !== 6}
+                  className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
+                >
+                  {verifying ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {isRtl ? "جارٍ التحقق..." : "Verifying..."}
+                    </span>
+                  ) : (
+                    isRtl ? "تحقق" : "Verify"
+                  )}
+                </button>
+
+                <div className="flex items-center justify-between text-sm">
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"
+                    onClick={() => setMode(otpOrigin)}
+                    className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-700 hover:underline"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <ArrowRight className={`w-3.5 h-3.5 ${isRtl ? "rotate-180" : ""}`} />
+                    {isRtl ? "رجوع" : "Back"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={otpTimer > 0}
+                    className="text-accent font-medium hover:underline disabled:text-zinc-400 disabled:hover:no-underline disabled:cursor-not-allowed"
+                  >
+                    {otpTimer > 0
+                      ? isRtl ? `إعادة الإرسال بعد ${otpTimer} ثانية` : `Resend in ${otpTimer}s`
+                      : isRtl ? "إعادة إرسال الرمز" : "Resend code"}
                   </button>
                 </div>
-              </div>
+              </form>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGoogle}
+                  disabled={googleLoading}
+                  className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                >
+                  {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleIcon />}
+                  {t("continue_with_google")}
+                </button>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
-              >
-                {loading ? t("common.loading")?.replace("...", "") || "Loading..." : mode === "login" ? t("login_btn") : t("register_btn")}
-              </button>
-            </form>
+                <div className="flex items-center gap-3 my-6">
+                  <div className="flex-1 h-px bg-zinc-200" />
+                  <span className="text-xs text-zinc-400">{isRtl ? "أو" : "or"}</span>
+                  <div className="flex-1 h-px bg-zinc-200" />
+                </div>
 
-            <div className="mt-6 text-center text-sm text-zinc-500">
-              {mode === "login" ? (
-                <>
-                  {t("no_account")}{" "}
-                  <button onClick={() => setMode("register")} className="text-accent font-medium hover:underline">
-                    {t("register_btn")}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {mode === "register" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">{t("name")}</label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">{t("email")}</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {mode === "login" && (
+                    <button
+                      type="button"
+                      onClick={handleOtpLogin}
+                      disabled={loading}
+                      className="text-xs text-accent hover:underline text-left"
+                    >
+                      {isRtl ? "الدخول برمز تحقق بدل كلمة المرور" : "Sign in with a code instead of password"}
+                    </button>
+                  )}
+
+                  {mode === "login" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">{t("password")}</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 rounded-xl bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
+                  >
+                    {loading ? t("common.loading")?.replace("...", "") || "Loading..." : mode === "login" ? t("login_btn") : t("register_btn")}
                   </button>
-                </>
-              ) : (
-                <>
-                  {t("have_account")}{" "}
-                  <button onClick={() => setMode("login")} className="text-accent font-medium hover:underline">
-                    {t("login_btn")}
-                  </button>
-                </>
-              )}
-            </div>
+                </form>
+
+                <div className="mt-6 text-center text-sm text-zinc-500">
+                  {mode === "login" ? (
+                    <>
+                      {t("no_account")}{" "}
+                      <button onClick={() => setMode("register")} className="text-accent font-medium hover:underline">
+                        {t("register_btn")}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {t("have_account")}{" "}
+                      <button onClick={() => setMode("login")} className="text-accent font-medium hover:underline">
+                        {t("login_btn")}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
