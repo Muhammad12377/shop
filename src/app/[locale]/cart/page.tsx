@@ -7,14 +7,12 @@ import { Link } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import Header from "@/components/layout/Header"
 import { createClient } from "@/lib/supabase/client"
-import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, Ticket, X } from "lucide-react"
+import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft } from "lucide-react"
 import { colorLabel } from "@/lib/colors"
 
 export default function CartPage() {
   const t = useTranslations("cart")
   const { items, removeItem, updateQuantity, total } = useCartStore()
-  const [couponCode, setCouponCode] = useState("")
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
   const [settings, setSettings] = useState<any>(null)
   const locale = useLocale()
   const isRtl = locale === "ar"
@@ -37,7 +35,7 @@ export default function CartPage() {
 
   const subtotal = total()
   const freeShip = settings && subtotal >= (Number(settings.free_shipping_min) || 100)
-  const grandTotal = subtotal - (appliedCoupon ? subtotal * 0.1 : 0)
+  const grandTotal = subtotal
 
   if (items.length === 0) {
     return (
@@ -136,43 +134,6 @@ export default function CartPage() {
         </div>
 
         <div className="mt-6 bg-white rounded-2xl border border-zinc-100 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Ticket className="w-4 h-4 text-accent" />
-            <span className="text-sm font-medium">{t("coupon_code")}</span>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value)}
-              placeholder={isRtl ? "أدخل كود الخصم" : "Enter coupon code"}
-              className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
-              disabled={!!appliedCoupon}
-            />
-            {appliedCoupon ? (
-              <button
-                onClick={() => { setAppliedCoupon(null); setCouponCode("") }}
-                className="px-4 py-2 rounded-xl border border-red-200 text-red-500 text-sm hover:bg-red-50 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  if (couponCode.trim()) {
-                    setAppliedCoupon(couponCode.trim())
-                  }
-                }}
-                disabled={!couponCode.trim()}
-                className="px-6 py-2 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
-              >
-                {t("apply_coupon")}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-6 bg-white rounded-2xl border border-zinc-100 p-6">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-zinc-500">{t("subtotal")}</span>
@@ -190,12 +151,6 @@ export default function CartPage() {
                 )}
               </span>
             </div>
-            {appliedCoupon && (
-              <div className="flex justify-between text-green-600">
-                <span>{t("discount")} (10%)</span>
-                <span>-${(subtotal * 0.1).toFixed(2)}</span>
-              </div>
-            )}
             {freeShip && settings && (
               <p className="text-xs text-zinc-400">{t("free_shipping_note")}</p>
             )}
