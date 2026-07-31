@@ -10,6 +10,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ success: false, error: "Unauthorized" } satisfies ApiResponse, { status: 401 })
 
+    const { data: profile } = await supabase.from("profiles").select("blocked").eq("id", user.id).single()
+    if (profile?.blocked) {
+      await supabase.auth.signOut()
+      return NextResponse.json({ success: false, error: "Your account is blocked" } satisfies ApiResponse, { status: 403 })
+    }
+
     const { data: order, error: fetchError } = await supabase
       .from("orders")
       .select("id, status, user_id")

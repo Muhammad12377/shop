@@ -19,6 +19,12 @@ export default async function AccountLayout({ children, params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/auth")
 
+  const { data: profile } = await supabase.from("profiles").select("blocked").eq("id", user.id).single()
+  if (profile?.blocked) {
+    await supabase.auth.signOut()
+    redirect("/auth?blocked=1")
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="max-w-7xl mx-auto px-4 py-8">

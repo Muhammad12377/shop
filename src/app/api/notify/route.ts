@@ -8,6 +8,9 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
 
+    const { data: profile } = await supabase.from("profiles").select("blocked").eq("id", user.id).single()
+    if (profile?.blocked) return NextResponse.json({ success: false, error: "Your account is blocked" }, { status: 403 })
+
     const body = await req.json()
 
     if (body?.type === "new_order" && body.order_id) {

@@ -5,6 +5,7 @@ import { Geist } from "next/font/google"
 import { notFound } from "next/navigation"
 import { routing } from "@/lib/i18n/routing"
 import { Toaster } from "react-hot-toast"
+import BlockedWatcher from "@/components/auth/BlockedWatcher"
 import "../globals.css"
 
 const geist = Geist({
@@ -45,6 +46,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html lang={locale} dir={isRtl ? "rtl" : "ltr"} className={geist.className}>
       <body className="min-h-screen flex flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <BlockedWatcher />
           {children}
           <Toaster
             position={isRtl ? "top-left" : "top-right"}
