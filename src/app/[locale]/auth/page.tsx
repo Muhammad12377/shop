@@ -6,9 +6,18 @@ import { useRouter } from "@/lib/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
-import { Mail, Lock, User, Eye, EyeOff } from "lucide-react"
+import { Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react"
 
 type AuthMode = "login" | "register"
+
+const GoogleIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z" />
+    <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A11 11 0 0 0 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52Z" />
+  </svg>
+)
 
 export default function AuthPage() {
   const t = useTranslations("auth")
@@ -19,6 +28,29 @@ export default function AuthPage() {
   const [name, setName] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true)
+    const supabase = createClient()
+    try {
+      const locale = window.location.pathname.split("/")[1] === "ar" ? "ar" : "en"
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback?next=/${locale}/account`,
+        },
+      })
+      if (error) throw error
+    } catch (err: any) {
+      if (err.message?.toLowerCase().includes("not enabled")) {
+        toast.error(locale === "ar" ? "تسجيل الدخول بغوغل غير مفعل بعد" : "Google sign-in is not enabled yet")
+      } else {
+        toast.error(err.message)
+      }
+      setGoogleLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,6 +96,22 @@ export default function AuthPage() {
             <p className="text-zinc-500 text-sm text-center mb-8">
               {mode === "login" ? "Sneakers Club Syria" : "Sneakers Club Syria"}
             </p>
+
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={googleLoading}
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            >
+              {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleIcon />}
+              {t("continue_with_google")}
+            </button>
+
+            <div className="flex items-center gap-3 my-6">
+              <div className="flex-1 h-px bg-zinc-200" />
+              <span className="text-xs text-zinc-400">{isRtl ? "أو" : "or"}</span>
+              <div className="flex-1 h-px bg-zinc-200" />
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === "register" && (

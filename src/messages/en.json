@@ -138,7 +138,8 @@
     "error_required": "This field is required",
     "error_email": "Invalid email address",
     "forgot_password": "Forgot Password?",
-    "reset_password": "Reset Password"
+    "reset_password": "Reset Password",
+    "continue_with_google": "Continue with Google"
   },
   "account": {
     "title": "My Account",

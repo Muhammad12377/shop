@@ -138,7 +138,8 @@
     "error_required": "هذا الحقل مطلوب",
     "error_email": "البريد الإلكتروني غير صالح",
     "forgot_password": "نسيت كلمة المرور؟",
-    "reset_password": "إعادة تعيين كلمة المرور"
+    "reset_password": "إعادة تعيين كلمة المرور",
+    "continue_with_google": "المتابعة باستخدام غوغل"
   },
   "account": {
     "title": "حسابي",
