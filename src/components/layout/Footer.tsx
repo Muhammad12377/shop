@@ -1,11 +1,14 @@
-import { useTranslations } from "next-intl"
+"use client"
+
+import { useTranslations, useLocale } from "next-intl"
 import { Link } from "@/lib/i18n/navigation"
 import { Globe, Mail, MapPin } from "lucide-react"
 
 export default function Footer({ locale }: { locale: string }) {
   const t = useTranslations("nav")
   const ht = useTranslations("home")
-  const isRtl = locale === "ar"
+  const ctxLocale = useLocale()
+  const isRtl = (locale || ctxLocale) === "ar"
 
   return (
     <footer className="bg-primary text-zinc-400 mt-auto">

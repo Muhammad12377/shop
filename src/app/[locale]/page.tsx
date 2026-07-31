@@ -215,7 +215,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
             <h2 className="text-3xl font-bold">{t("featured")}</h2>
             <p className="text-zinc-500 mt-1">{isRtl ? "أفضل المنتجات لهذا الأسبوع" : "Best products this week"}</p>
           </div>
-          <Link href="/products" className="text-sm font-medium text-accent hover:underline">
+          <Link href="/products" locale={locale} className="text-sm font-medium text-accent hover:underline">
             {isRtl ? "عرض الكل" : "View All"}
           </Link>
         </div>
