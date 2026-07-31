@@ -427,8 +427,13 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "السعر" : "Price"}</label>
                   <input
                     type="number"
+                    min={0}
+                    step="0.01"
                     value={form.price || 0}
-                    onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value)
+                      setForm({ ...form, price: Math.round(Math.max(0, isNaN(v) ? 0 : v) * 100) / 100 })
+                    }}
                     className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                   />
                 </div>
@@ -436,8 +441,13 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "السعر الأصلي" : "Compare Price"}</label>
                   <input
                     type="number"
+                    min={0}
+                    step="0.01"
                     value={form.compare_price || 0}
-                    onChange={(e) => setForm({ ...form, compare_price: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value)
+                      setForm({ ...form, compare_price: Math.round(Math.max(0, isNaN(v) ? 0 : v) * 100) / 100 })
+                    }}
                     className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                   />
                 </div>

@@ -25,6 +25,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const { category: _category, ...body } = await req.json()
+    if (body.price != null) body.price = Math.round(Math.max(0, Number(body.price)) * 100) / 100
+    if (body.compare_price != null) body.compare_price = Math.round(Math.max(0, Number(body.compare_price)) * 100) / 100
     const updateData: Record<string, any> = { ...body, updated_at: new Date().toISOString() }
     if (body.name_en) {
       const baseSlug = body.name_en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
