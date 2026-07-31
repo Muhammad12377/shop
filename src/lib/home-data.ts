@@ -14,8 +14,10 @@ const client = createClient(
 
 export const getCachedSettings = unstable_cache(
   async () => {
-    const { data } = await client.from("settings").select("*").single()
-    return data
+    const { data } = await client.from("settings").select("key, value")
+    const settings: Record<string, any> = {}
+    for (const row of data || []) settings[row.key] = row.value
+    return settings
   },
   ["home-settings"],
   { tags: ["home"], revalidate: 60 }

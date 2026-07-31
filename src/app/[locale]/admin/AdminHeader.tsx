@@ -14,12 +14,12 @@ export default function AdminHeader({ locale }: { locale: string }) {
     const supabase = createClient()
     supabase
       .from("settings")
-      .select("store_name")
-      .single()
+      .select("key, value")
       .then(({ data }) => {
-        if (data?.store_name) setStoreName(data.store_name)
+        const settings: Record<string, any> = {}
+        for (const row of data || []) settings[row.key] = row.value
+        if (settings.store_name) setStoreName(settings.store_name)
       })
-      .then(() => {})
   }, [])
 
   const handleLogout = async () => {

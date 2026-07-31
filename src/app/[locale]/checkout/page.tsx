@@ -61,7 +61,14 @@ export default function CheckoutPage() {
           })
       }
     })
-    supabase.from("settings").select("*").single().then(({ data }) => setSettings(data))
+    supabase
+      .from("settings")
+      .select("key, value")
+      .then(({ data }) => {
+        const s: Record<string, any> = {}
+        for (const row of data || []) s[row.key] = row.value
+        setSettings(s)
+      })
   }, [])
 
   if (items.length === 0) {
