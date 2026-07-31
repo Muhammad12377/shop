@@ -157,11 +157,24 @@ async function CategoriesSection({ locale }: { locale: string }) {
             <Link
               key={cat.id || i}
               href={`/products?category=${cat.slug}`}
-              className={`relative h-48 rounded-2xl bg-gradient-to-br ${colorMap[cat.slug] || "from-zinc-900 to-zinc-700"} overflow-hidden group`}
+              className={`relative h-48 rounded-2xl overflow-hidden group ${
+                cat.image_url
+                  ? "bg-zinc-200"
+                  : `bg-gradient-to-br ${colorMap[cat.slug] || "from-zinc-900 to-zinc-700"}`
+              }`}
             >
+              {cat.image_url ? (
+                <Image
+                  src={cat.image_url}
+                  alt={isRtl ? cat.name_ar || "" : cat.name_en || ""}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : null}
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
               <div className="relative h-full flex items-end p-5">
-                <span className="text-white font-semibold text-lg">
+                <span className="text-white font-semibold text-lg drop-shadow">
                   {isRtl ? cat.name_ar : cat.name_en}
                 </span>
               </div>

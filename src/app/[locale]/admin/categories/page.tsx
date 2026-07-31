@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-import { Plus, Pencil, Trash2, X, ArrowUp, ArrowDown, Loader2 } from "lucide-react"
+import { useEffect, useState, useCallback, useRef } from "react"
+import Image from "next/image"
+import { Plus, Pencil, Trash2, X, ArrowUp, ArrowDown, Loader2, Upload, Image as ImageIcon, Check, FileIcon } from "lucide-react"
 import toast from "react-hot-toast"
-import type { ProductCategory } from "@/types"
+import type { ProductCategory, Media } from "@/types"
 
 const defaultCat: Partial<ProductCategory> = {
   name_en: "",
@@ -23,6 +24,10 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
   const [form, setForm] = useState<Partial<ProductCategory>>({ ...defaultCat })
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [mediaItems, setMediaItems] = useState<Media[]>([])
+  const [mediaModalOpen, setMediaModalOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
@@ -40,6 +45,35 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
   }, [isRtl])
 
   useEffect(() => { fetchCategories() }, [fetchCategories])
+
+  const fetchMedia = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/media")
+      const data = await res.json()
+      if (Array.isArray(data)) setMediaItems(data)
+    } catch {}
+  }, [])
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setForm({ ...form, image_url: data.url })
+      toast.success(isRtl ? "تم رفع الصورة" : "Image uploaded")
+      fetchMedia()
+    } catch (err: any) {
+      toast.error(err.message || (isRtl ? "خطأ في الرفع" : "Upload failed"))
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
 
   const openAdd = () => {
     setEditing(null)
@@ -166,6 +200,7 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
               <tr>
                 <th className="w-16 px-4 py-3 font-medium text-zinc-500">{isRtl ? "ترتيب" : "Order"}</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الاسم" : "Name"}</th>
+                <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الصورة" : "Image"}</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">Slug</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الحالة" : "Active"}</th>
                 <th className="text-right px-4 py-3 font-medium text-zinc-500">{isRtl ? "الإجراءات" : "Actions"}</th>
@@ -202,6 +237,15 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                     </td>
                     <td className="px-4 py-3 font-medium">
                       {isRtl ? cat.name_ar || cat.name_en : cat.name_en || cat.name_ar}
+                    </td>
+                    <td className="px-4 py-3">
+                      {cat.image_url ? (
+                        <div className="relative w-16 h-10 rounded-lg overflow-hidden border border-zinc-200">
+                          <Image src={cat.image_url} alt="" fill sizes="64px" className="object-cover" />
+                        </div>
+                      ) : (
+                        <span className="text-xs text-zinc-400">{isRtl ? "لا توجد" : "None"}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-zinc-500">{cat.slug}</td>
                     <td className="px-4 py-3">
@@ -287,11 +331,62 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "رابط الصورة" : "Image URL"}</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
+                  {isRtl ? "صورة الخلفية" : "Background Image"}
+                </label>
+                <div className="relative aspect-video rounded-xl overflow-hidden border border-zinc-200 bg-zinc-100 mb-3">
+                  {form.image_url ? (
+                    <Image src={form.image_url} alt="" fill sizes="512px" className="object-cover" />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-400 gap-1">
+                      <ImageIcon className="w-8 h-8" />
+                      <p className="text-xs">{isRtl ? "لا توجد صورة — ستظهر خلفية ملونة" : "No image — a colored gradient will show"}</p>
+                    </div>
+                  )}
+                  {form.image_url && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, image_url: "" })}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 cursor-pointer"
+                      title={isRtl ? "إزالة الصورة" : "Remove image"}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                    onChange={handleUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-[#f97316] text-white rounded-lg text-sm font-medium hover:bg-[#fb923c] disabled:opacity-50 transition-colors cursor-pointer"
+                  >
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {uploading
+                      ? isRtl ? "جارٍ الرفع..." : "Uploading..."
+                      : isRtl ? "رفع صورة" : "Upload Image"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-[#f97316]/10 text-[#f97316] rounded-lg text-sm font-medium hover:bg-[#f97316]/20 transition-colors cursor-pointer"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {isRtl ? "من المكتبة" : "From Library"}
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={form.image_url || ""}
                   onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                  placeholder={isRtl ? "أو الصق رابط الصورة هنا..." : "Or paste an image URL here..."}
                   className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                 />
               </div>
@@ -333,6 +428,58 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isRtl ? "حفظ" : "Save"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mediaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 pb-10">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setMediaModalOpen(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto z-10">
+            <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{isRtl ? "اختر صورة من المكتبة" : "Choose an image from library"}</h2>
+              <button onClick={() => setMediaModalOpen(false)} className="p-1 hover:bg-zinc-100 rounded-lg cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {mediaItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileIcon className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
+                  <p className="text-zinc-400">{isRtl ? "لا توجد صور في المكتبة" : "No images in library"}</p>
+                  <p className="text-sm text-zinc-300 mt-1">
+                    {isRtl ? "ارفع الصور أولاً من صفحة الوسائط" : "Upload images first from the Media page"}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {mediaItems.map((item) => {
+                    const selected = form.image_url === item.url
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, image_url: item.url })
+                          toast.success(isRtl ? "تم الاختيار" : "Selected")
+                          setMediaModalOpen(false)
+                        }}
+                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                          selected ? "border-green-500" : "border-transparent hover:border-[#f97316]"
+                        }`}
+                      >
+                        <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
+                        {selected && (
+                          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                            <Check className="w-6 h-6 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
