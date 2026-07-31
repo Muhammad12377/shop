@@ -74,11 +74,22 @@ export default function AuthPage() {
 
   const friendlyError = (err: any) => {
     const m = err?.message || ""
+    const code = err?.code || ""
     const match = m.match(/only request this after (\d+) seconds?/i)
     if (match) {
       return isRtl
         ? `أعد المحاولة بعد ${match[1]} ثانية`
         : `Try again in ${match[1]} seconds`
+    }
+    if (code === "over_email_send_rate_limit" || /rate limit exceeded/i.test(m)) {
+      return isRtl
+        ? "وصلت إلى الحد الأقصى لإرسال الرموز. حاول مجددًا بعد مرور ساعة تقريبًا."
+        : "You've reached the maximum number of codes. Try again in about an hour."
+    }
+    if (code === "over_request_rate_limit" || /too many requests/i.test(m)) {
+      return isRtl
+        ? "عدد كبير جدًا من الطلبات من جهازك. حاول مجددًا بعد بضع دقائق."
+        : "Too many requests from your device. Please try again in a few minutes."
     }
     return m
   }
