@@ -145,14 +145,7 @@ async function CategoriesSection({ locale }: { locale: string }) {
     sports: "from-orange-900 to-orange-700",
   }
 
-  const displayCats = categories && categories.length > 0
-    ? categories
-    : [
-        { id: "1", slug: "men", name_en: "Men", name_ar: "رجالي" },
-        { id: "2", slug: "women", name_en: "Women", name_ar: "نسائي" },
-        { id: "3", slug: "kids", name_en: "Kids", name_ar: "أطفال" },
-        { id: "4", slug: "sports", name_en: "Sports", name_ar: "رياضي" },
-      ]
+  const displayCats = categories || []
 
   return (
     <section className="py-16 bg-zinc-50">
@@ -196,14 +189,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
     .limit(4)
 
   const fallback = !products || products.length === 0
-  const displayProducts = fallback
-    ? [
-        { id: "1", name_en: "Air Max Pulse", name_ar: "إير ماكس بولس", price: 149.99, category: { name_en: "Men", name_ar: "رجالي" } },
-        { id: "2", name_en: "Runner X Pro", name_ar: "رانر إكس برو", price: 129.99, category: { name_en: "Sports", name_ar: "رياضي" } },
-        { id: "3", name_en: "Street Style 3000", name_ar: "ستريت ستايل 3000", price: 99.99, category: { name_en: "Women", name_ar: "نسائي" } },
-        { id: "4", name_en: "Classic Low Top", name_ar: "كلاسيك لو توب", price: 89.99, category: { name_en: "Kids", name_ar: "أطفال" } },
-      ]
-    : products
+  const displayProducts = products || []
 
   return (
     <section className="py-16 bg-white">
@@ -217,6 +203,11 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
             {isRtl ? "عرض الكل" : "View All"}
           </Link>
         </div>
+        {fallback ? (
+          <div className="text-center py-12 text-zinc-400">
+            {isRtl ? "لا توجد منتجات بعد" : "No products yet"}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {displayProducts.map((product: any) => (
             <Link
@@ -259,6 +250,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
             </Link>
           ))}
         </div>
+        )}
       </div>
     </section>
   )
