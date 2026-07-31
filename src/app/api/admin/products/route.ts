@@ -2,6 +2,19 @@ import { NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import { createServerSupabase } from "@/lib/supabase/server"
 
+async function uniqueSlug(supabase: any, base: string, excludeId?: string) {
+  let slug = base
+  let i = 2
+  for (;;) {
+    let query = supabase.from("products").select("id").eq("slug", slug)
+    if (excludeId) query = query.neq("id", excludeId)
+    const { data } = await query.maybeSingle()
+    if (!data) return slug
+    slug = `${base}-${i}`
+    i += 1
+  }
+}
+
 export async function GET() {
   try {
     const supabase = await createServerSupabase()
@@ -31,7 +44,8 @@ export async function POST(req: Request) {
     if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const { category: _category, ...body } = await req.json()
-    const slug = body.name_en?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `product-${Date.now()}`
+    const baseSlug = body.name_en?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `product-${Date.now()}`
+    const slug = await uniqueSlug(supabase, baseSlug)
 
     if (Array.isArray(body.sizes)) {
       const sizeStock: Record<string, number> = { ...(body.size_stock || {}) }

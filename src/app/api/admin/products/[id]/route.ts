@@ -2,6 +2,19 @@ import { NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import { createServerSupabase } from "@/lib/supabase/server"
 
+async function uniqueSlug(supabase: any, base: string, excludeId?: string) {
+  let slug = base
+  let i = 2
+  for (;;) {
+    let query = supabase.from("products").select("id").eq("slug", slug)
+    if (excludeId) query = query.neq("id", excludeId)
+    const { data } = await query.maybeSingle()
+    if (!data) return slug
+    slug = `${base}-${i}`
+    i += 1
+  }
+}
+
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -14,7 +27,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { category: _category, ...body } = await req.json()
     const updateData: Record<string, any> = { ...body, updated_at: new Date().toISOString() }
     if (body.name_en) {
-      updateData.slug = body.name_en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+      const baseSlug = body.name_en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+      updateData.slug = await uniqueSlug(supabase, baseSlug || `product-${id}`, id)
     }
     if (Array.isArray(body.sizes)) {
       const sizeStock: Record<string, number> = { ...(body.size_stock || {}) }
