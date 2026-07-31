@@ -242,24 +242,6 @@ export default function CheckoutPage() {
         note: "Order placed",
       })
 
-      for (const item of orderItems) {
-        const product = stockMap[item.product_id]
-        if (product) {
-          const sizeStock = { ...(product.size_stock || {}) }
-          let newStock = Number(product.stock)
-          if (item.size && sizeStock[item.size] != null) {
-            sizeStock[item.size] = Math.max(0, Number(sizeStock[item.size]) - item.quantity)
-            newStock = Object.values(sizeStock).reduce((a: number, b: any) => a + (Number(b) || 0), 0)
-          } else {
-            newStock = Math.max(0, Number(product.stock) - item.quantity)
-          }
-          await supabase
-            .from("products")
-            .update({ size_stock: sizeStock, stock: newStock })
-            .eq("id", item.product_id)
-        }
-      }
-
       clearCart()
       toast.success(t("order_confirmed"))
       router.push(`/order-confirmed?id=${order.id}`)

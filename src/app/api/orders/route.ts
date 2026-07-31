@@ -161,22 +161,6 @@ export async function POST(request: NextRequest) {
     created_by: auth.user.id,
   })
 
-  for (const item of body.items) {
-    const product = stockMap[item.product_id]
-    const sizeStock = { ...(product.size_stock || {}) }
-    let newStock = Number(product.stock)
-    if (item.size && sizeStock[item.size] != null) {
-      sizeStock[item.size] = Math.max(0, Number(sizeStock[item.size]) - Number(item.quantity))
-      newStock = Object.values(sizeStock).reduce((a: number, b: any) => a + (Number(b) || 0), 0)
-    } else {
-      newStock = Math.max(0, Number(product.stock) - Number(item.quantity))
-    }
-    await auth.supabase
-      .from("products")
-      .update({ size_stock: sizeStock, stock: newStock })
-      .eq("id", item.product_id)
-  }
-
   await auth.supabase.from("cart_items").delete().eq("user_id", auth.user.id)
 
   return NextResponse.json({ success: true, data: order } satisfies ApiResponse)
