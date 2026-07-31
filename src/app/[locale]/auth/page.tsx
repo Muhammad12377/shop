@@ -65,15 +65,30 @@ export default function AuthPage() {
     return () => clearInterval(timer)
   }, [otpTimer])
 
+  const cooldownSeconds = (err: any): number => {
+    const m = (err?.message || "").match(/after (\d+) seconds?/i)
+    return m ? Math.max(1, parseInt(m[1], 10)) : 60
+  }
+
+  const isCooldownError = (err: any) => /only request this after (\d+) seconds?/i.test(err?.message || "")
+
   const friendlyError = (err: any) => {
     const m = err?.message || ""
     const match = m.match(/only request this after (\d+) seconds?/i)
     if (match) {
       return isRtl
-        ? `لأسباب أمنية، أعد المحاولة بعد ${match[1]} ثانية`
-        : `For security reasons, try again in ${match[1]} seconds`
+        ? `أعد المحاولة بعد ${match[1]} ثانية`
+        : `Try again in ${match[1]} seconds`
     }
     return m
+  }
+
+  const gotoOtpScreen = (target: string, origin: OtpOrigin, seconds: number) => {
+    setOtpEmail(target)
+    setOtpCode("")
+    setOtpTimer(seconds)
+    setOtpOrigin(origin)
+    setMode("otp")
   }
 
   const sendOtp = async (target: string, origin: OtpOrigin) => {
@@ -83,11 +98,7 @@ export default function AuthPage() {
       options: { shouldCreateUser: false },
     })
     if (error) throw error
-    setOtpEmail(target)
-    setOtpCode("")
-    setOtpTimer(60)
-    setOtpOrigin(origin)
-    setMode("otp")
+    gotoOtpScreen(target, origin, 60)
   }
 
   const sendRegisterOtp = async (target: string, fullName: string) => {
@@ -99,13 +110,16 @@ export default function AuthPage() {
         data: { full_name: fullName },
       },
     })
-    if (error) throw error
-    setOtpEmail(target)
-    setOtpCode("")
-    setOtpTimer(60)
-    setOtpOrigin("register")
-    setOtpSentAt(new Date().toISOString())
-    setMode("otp")
+    if (error) {
+      if (isCooldownError(error)) {
+        if (!otpSentAt) setOtpSentAt(new Date(Date.now() - 70000).toISOString())
+        gotoOtpScreen(target, "register", cooldownSeconds(error))
+        return
+      }
+      throw error
+    }
+    setOtpSentAt(new Date(Date.now() - 5000).toISOString())
+    gotoOtpScreen(target, "register", 60)
   }
 
   const handleResendOtp = async () => {
@@ -191,6 +205,10 @@ export default function AuthPage() {
       await sendOtp(email.trim(), "forgot")
       toast.success(isRtl ? "أرسلنا رمز التحقق إلى بريدك" : "Verification code sent to your email")
     } catch (err: any) {
+      if (isCooldownError(err)) {
+        gotoOtpScreen(email.trim(), "forgot", cooldownSeconds(err))
+        return
+      }
       toast.error(friendlyError(err))
     } finally {
       setLoading(false)
