@@ -51,6 +51,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "You have already reviewed this product" } satisfies ApiResponse, { status: 409 })
   }
 
+  const { data: deliveredOrders } = await auth.supabase
+    .from("orders")
+    .select("items")
+    .eq("user_id", auth.user.id)
+    .eq("status", "delivered")
+
+  let delivered = false
+  for (const o of deliveredOrders || []) {
+    for (const it of o.items || []) {
+      if (it?.product_id === body.product_id) {
+        delivered = true
+        break
+      }
+    }
+    if (delivered) break
+  }
+
+  if (!delivered) {
+    return NextResponse.json(
+      { success: false, error: "You can only review products that were delivered to you" } satisfies ApiResponse,
+      { status: 403 }
+    )
+  }
+
   const { data, error } = await auth.supabase
     .from("reviews")
     .insert({ user_id: auth.user.id, product_id: body.product_id, rating: body.rating, comment: body.comment || null })

@@ -12,6 +12,9 @@ import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { ShoppingCart, Heart, Check, Package, Truck, Shield, Play } from "lucide-react"
 import { colorBackground, colorLabel } from "@/lib/colors"
+import ProductCard from "@/components/products/ProductCard"
+import { groupBySku } from "@/lib/group-products"
+import Reviews from "@/components/products/Reviews"
 
 export default function ProductView({ product, siblings }: { product: any; siblings?: any[] }) {
   const t = useTranslations("product")
@@ -365,39 +368,14 @@ export default function ProductView({ product, siblings }: { product: any; sibli
           </div>
         </div>
 
+        <Reviews productId={product.id} />
+
         {related.length > 0 && (
           <section className="mt-16">
             <h2 className="text-2xl font-bold mb-8">{t("related")}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {related.map((rel: any) => (
-                <Link
-                  key={rel.id}
-                  href={`/product/${rel.id}`}
-                  className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/30 transition-all"
-                >
-                  <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
-                    {rel.images?.[0] ? (
-                      <Image
-                        src={rel.images[0]}
-                        alt={isRtl ? rel.name_ar || "" : rel.name_en || ""}
-                        fill
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <span className="text-zinc-400 text-xs">{isRtl ? "صورة" : "Image"}</span>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <p className="text-xs text-zinc-400 truncate">
-                      {rel.category ? (isRtl ? rel.category.name_ar : rel.category.name_en) : ""}
-                    </p>
-                    <h3 className="font-medium text-sm group-hover:text-accent transition-colors truncate">
-                      {isRtl ? rel.name_ar : rel.name_en}
-                    </h3>
-                    <p className="text-accent font-bold text-sm mt-1">${rel.price}</p>
-                  </div>
-                </Link>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              {groupBySku(related).map((cluster) => (
+                <ProductCard key={cluster.key} variants={cluster.variants} locale={locale} />
               ))}
             </div>
           </section>

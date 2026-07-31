@@ -3,8 +3,10 @@ import { Link } from "@/lib/i18n/navigation"
 import Image from "next/image"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
+import ProductCard from "@/components/products/ProductCard"
 import { ArrowRight, Sparkles, Shield, Truck } from "lucide-react"
 import { getCachedSettings, getCachedCategories, getCachedHomeProducts } from "@/lib/home-data"
+import { groupBySku } from "@/lib/group-products"
 
 export const revalidate = 60
 export const dynamic = "force-static"
@@ -227,54 +229,9 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
             {isRtl ? "لا توجد منتجات بعد" : "No products yet"}
           </div>
         ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {displayProducts.map((product: any, i: number) => (
-            <Link
-              key={product.id}
-              href={`/product/${product.id}`}
-              locale={locale}
-              className="group bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/30 transition-all"
-            >
-              <div className="aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
-                {product.images?.[0] ? (
-                  <Image
-                    src={product.images[0]}
-                    alt={isRtl ? product.name_ar || "" : product.name_en || ""}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    className="object-cover"
-                    priority={i < 4}
-                  />
-                ) : (
-                  <span className="text-zinc-400 text-sm">
-                    {isRtl ? "صورة المنتج" : "Product Image"}
-                  </span>
-                )}
-                {product.compare_price && (
-                  <span className="absolute top-3 start-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
-                    {Math.round((1 - product.price / product.compare_price) * 100)}% OFF
-                  </span>
-                )}
-              </div>
-              <div className="p-3 sm:p-4">
-                <p className="text-xs text-zinc-400 mb-1 truncate">
-                  {product.category
-                    ? isRtl
-                      ? product.category.name_ar
-                      : product.category.name_en
-                    : ""}
-                </p>
-                <h3 className="font-medium text-sm sm:text-base group-hover:text-accent transition-colors truncate">
-                  {isRtl ? product.name_ar : product.name_en}
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-accent font-bold text-sm sm:text-base">${product.price}</p>
-                  {product.compare_price && (
-                    <p className="text-xs text-zinc-400 line-through">${product.compare_price}</p>
-                  )}
-                </div>
-              </div>
-            </Link>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+          {groupBySku(displayProducts).map((cluster, i) => (
+            <ProductCard key={cluster.key} variants={cluster.variants} locale={locale} priority={i < 4} />
           ))}
         </div>
         )}
