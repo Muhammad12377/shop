@@ -10,9 +10,9 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   const [media, setMedia] = useState<Media[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [preview, setPreview] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
@@ -35,8 +35,14 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
-    setPreview(url)
+    uploadFile(file)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
     uploadFile(file)
   }
 
@@ -49,7 +55,6 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       toast.success(isRtl ? "تم الرفع" : "Uploaded")
-      setPreview(null)
       fetchMedia()
     } catch (err: any) {
       toast.error(err.message || (isRtl ? "خطأ في الرفع" : "Upload failed"))
@@ -96,7 +101,11 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   }
 
   return (
-    <div>
+    <div
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{isRtl ? "مكتبة الصور" : "Media Library"}</h1>
         <div>
@@ -118,10 +127,40 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
         </div>
       </div>
 
-      {preview && (
-        <div className="mb-6 p-4 bg-white rounded-xl border border-zinc-200">
-          <p className="text-xs text-zinc-500 mb-2">{isRtl ? "معاينة قبل الرفع" : "Preview"}</p>
-          <img src={preview} alt="" className="w-32 h-32 object-cover rounded-lg" />
+      <div
+        onClick={() => !uploading && fileRef.current?.click()}
+        className={`mb-6 p-8 rounded-xl border-2 border-dashed transition-colors cursor-pointer text-center ${
+          dragOver
+            ? "bg-[#f97316]/5 border-[#f97316]"
+            : "bg-white border-zinc-300 hover:border-[#f97316]/50"
+        }`}
+      >
+        {uploading ? (
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-8 h-8 text-[#f97316] animate-spin" />
+            <p className="text-sm text-zinc-500">{isRtl ? "جاري الرفع..." : "Uploading..."}</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <Upload className={`w-8 h-8 ${dragOver ? "text-[#f97316]" : "text-zinc-400"}`} />
+            <p className="text-sm font-medium text-zinc-600">
+              {dragOver
+                ? isRtl ? "أفلت الصورة هنا" : "Drop the image here"
+                : isRtl ? "اسحب وأفلت صورة هنا أو اضغط للاختيار" : "Drag and drop an image here, or click to select"}
+            </p>
+            <p className="text-xs text-zinc-400">{isRtl ? "JPG, PNG, WEBP, GIF" : "JPG, PNG, WEBP, GIF"}</p>
+          </div>
+        )}
+      </div>
+
+      {dragOver && (
+        <div className="fixed inset-0 z-40 bg-[#f97316]/10 border-4 border-[#f97316] border-dashed rounded-2xl pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-white rounded-2xl shadow-xl px-8 py-6 text-center">
+              <Upload className="w-10 h-10 text-[#f97316] mx-auto mb-2" />
+              <p className="font-medium">{isRtl ? "أفلت الصورة للرفع" : "Drop to upload"}</p>
+            </div>
+          </div>
         </div>
       )}
 

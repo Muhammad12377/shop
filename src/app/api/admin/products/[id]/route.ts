@@ -10,7 +10,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
     if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    const body = await req.json()
+    const { category: _category, ...body } = await req.json()
     const updateData: Record<string, any> = { ...body, updated_at: new Date().toISOString() }
     if (body.name_en) {
       updateData.slug = body.name_en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
