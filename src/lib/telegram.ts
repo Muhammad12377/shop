@@ -28,7 +28,7 @@ export type TelegramEvent =
       notes?: string | null
     }
   | { type: "order_status"; id: string; status: string }
-  | { type: "order_cancelled"; id: string }
+  | { type: "order_cancelled"; id: string; cancelled_by?: "admin" | "customer"; reason?: string | null }
   | { type: "new_user"; email: string; name?: string | null }
   | { type: "new_review"; product: string; rating: number; comment?: string | null; user?: string | null }
   | { type: "low_stock"; product: string; stock: number }
@@ -56,8 +56,16 @@ export function formatTelegramMessage(ev: TelegramEvent): string {
     }
     case "order_status":
       return `📦 تحديث حالة الطلب #${ev.id}\nالحالة الجديدة: <b>${STATUS_AR[ev.status] || escapeHtml(ev.status)}</b>`
-    case "order_cancelled":
-      return `❌ ألغى العميل الطلب #${ev.id}`
+    case "order_cancelled": {
+      const who = ev.cancelled_by === "admin" ? "الإدمن" : "الزبون"
+      const lines = [
+        "❌ <b>أُلغي الطلب</b>",
+        `🆔 #${ev.id}`,
+        `بواسطة: <b>${who}</b>`,
+        ev.reason ? `السبب: ${escapeHtml(ev.reason)}` : null,
+      ]
+      return lines.filter(Boolean).join("\n")
+    }
     case "new_user":
       return `👤 <b>مستخدم جديد</b>\n${ev.name ? `الاسم: ${escapeHtml(ev.name)}\n` : ""}البريد: ${escapeHtml(ev.email)}`
     case "new_review":

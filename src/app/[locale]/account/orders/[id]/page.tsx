@@ -28,6 +28,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
   const locale = useLocale()
   const isRtl = locale === "ar"
 
@@ -65,11 +66,15 @@ export default function OrderDetailPage() {
     if (!ok) return
     setCancelling(true)
     try {
-      const res = await fetch(`/api/orders/${order.id}`, { method: "PATCH" })
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason }),
+      })
       const data = await res.json()
       if (!data.success) throw new Error(data.error || "Error")
       toast.success(isRtl ? "تم إلغاء الطلب" : "Order cancelled")
-      setOrder((prev: any) => ({ ...prev, status: "cancelled" }))
+      setOrder((prev: any) => ({ ...prev, status: "cancelled", cancelled_by: "customer", cancel_reason: cancelReason }))
       loadOrder()
     } catch (err: any) {
       toast.error(err.message || (isRtl ? "خطأ" : "Error"))
@@ -126,16 +131,25 @@ export default function OrderDetailPage() {
         </div>
 
         {order.status === "pending" && (
-          <div className="border-t border-zinc-100 pt-4 flex items-center justify-between">
-            <p className="text-sm text-zinc-500">
-              {isRtl
-                ? "يمكنك إلغاء هذا الطلب ما دام لم يُؤكد بعد."
-                : "You can cancel this order while it is still pending."}
-            </p>
+          <div className="border-t border-zinc-100 pt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-zinc-500 mb-2">
+                {isRtl
+                  ? "يمكنك إلغاء هذا الطلب ما دام لم يُؤكد بعد."
+                  : "You can cancel this order while it is still pending."}
+              </p>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder={isRtl ? "سبب الإلغاء (اختياري)..." : "Cancellation reason (optional)..."}
+                className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
             <button
               onClick={handleCancel}
               disabled={cancelling}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
             >
               <XCircle className="w-4 h-4" />
               {cancelling

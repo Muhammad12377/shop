@@ -51,15 +51,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 })
 
     const prev = order.status
+    const stocked: Record<string, boolean> = { confirmed: true, shipped: true, delivered: true }
+    const movedOut = stocked[prev] === true
+    const movedInto = stocked[status] === true
+
+    const updateData: Record<string, any> = { status, updated_at: new Date().toISOString() }
+    if (status === "cancelled") {
+      updateData.cancelled_by = "admin"
+      if (typeof note === "string" && note.trim()) updateData.cancel_reason = note.trim()
+    }
 
     const { error: updateError } = await supabase
       .from("orders")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq("id", id)
 
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
-    if (status === "confirmed" && prev !== "confirmed") {
+    if (movedInto && !movedOut) {
       await applyStock(supabase, order.items, -1)
       const seen = new Set<string>()
       for (const item of order.items || []) {
@@ -80,7 +89,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
-    if (status === "cancelled" && prev === "confirmed") {
+    if (status === "cancelled" && movedOut) {
       await applyStock(supabase, order.items, 1)
     }
 

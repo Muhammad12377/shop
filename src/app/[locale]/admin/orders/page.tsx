@@ -138,6 +138,13 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || "bg-zinc-100"}`}>
                     {isRtl ? statusLabels[order.status]?.ar || order.status : statusLabels[order.status]?.en || order.status}
                   </span>
+                  {order.status === "cancelled" && order.cancelled_by && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-600">
+                      {order.cancelled_by === "customer"
+                        ? isRtl ? "ألغى الزبون" : "Cancelled by customer"
+                        : isRtl ? "ألغاه الإدمن" : "Cancelled by admin"}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-xs text-zinc-400" title={order.created_at}>
@@ -184,6 +191,25 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                         <span>{isRtl ? "الإجمالي" : "Total"}</span>
                         <span>${order.total?.toFixed(2)}</span>
                       </div>
+                    </div>
+                  )}
+
+                  {order.status === "cancelled" && (
+                    <div className="mb-4 bg-red-50 rounded-lg p-4 text-sm">
+                      <p className="font-medium text-red-700">
+                        {order.cancelled_by === "customer"
+                          ? isRtl ? "أُلغي بواسطة الزبون" : "Cancelled by customer"
+                          : isRtl ? "أُلغي بواسطة الإدمن" : "Cancelled by admin"}
+                      </p>
+                      {order.cancel_reason ? (
+                        <p className="text-red-600 mt-1">
+                          {isRtl ? "سبب الإلغاء" : "Cancellation reason"}: {order.cancel_reason}
+                        </p>
+                      ) : (
+                        <p className="text-red-400 mt-1">
+                          {isRtl ? "لم يُذكر سبب للإلغاء" : "No cancellation reason provided"}
+                        </p>
+                      )}
                     </div>
                   )}
 

@@ -95,6 +95,8 @@ export type Order = {
   notes?: string
   items: OrderItem[]
   user_email?: string
+  cancelled_by?: "admin" | "customer" | null
+  cancel_reason?: string | null
   created_at: string
   updated_at?: string
 }
