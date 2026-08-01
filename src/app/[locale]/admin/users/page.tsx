@@ -1,11 +1,18 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-import { Shield, ShieldOff, Ban, CheckCircle2, Loader2, X } from "lucide-react"
+import { useEffect, useState, useCallback, useMemo } from "react"
+import { Shield, ShieldOff, Ban, CheckCircle2, Loader2, X, Search, Crown } from "lucide-react"
 import toast from "react-hot-toast"
 import type { UserProfile } from "@/types"
 
 type ConfirmState = { user: UserProfile; action: "promote" | "demote" | "block" | "unblock" } | null
+
+const isProtectedUser = (u: UserProfile) => u.is_me || u.is_main_admin
+
+const protectionLabel = (u: UserProfile, isRtl: boolean) =>
+  u.is_me
+    ? isRtl ? "حسابك الحالي" : "Your account"
+    : isRtl ? "المدير الأساسي" : "Main Admin"
 
 export default function AdminUsersPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
   const [locale, setLocale] = useState("en")
@@ -14,6 +21,7 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<ConfirmState>(null)
   const [typedName, setTypedName] = useState("")
+  const [search, setSearch] = useState("")
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
@@ -36,6 +44,14 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
     const name = user.full_name?.trim()
     return (name ? name : user.email).trim()
   }
+
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return users
+    return users.filter((u) =>
+      [u.full_name, u.email].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
+    )
+  }, [users, search])
 
   const openConfirm = (user: UserProfile, action: "promote" | "demote" | "block" | "unblock") => {
     setTypedName("")
@@ -105,6 +121,32 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
     <div>
       <h1 className="text-2xl font-bold mb-6">{isRtl ? "المستخدمين" : "Users"}</h1>
 
+      <div className="relative mb-4 max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={isRtl ? "ابحث بالاسم أو البريد..." : "Search by name or email..."}
+          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      {search.trim() && (
+        <p className="text-xs text-zinc-500 mb-3">
+          {isRtl
+            ? `${filteredUsers.length} نتيجة`
+            : `${filteredUsers.length} result${filteredUsers.length === 1 ? "" : "s"}`}
+        </p>
+      )}
+
       <div className="hidden md:block bg-white rounded-xl border border-zinc-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -118,14 +160,14 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {users.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-12 text-center text-zinc-400">
                     {isRtl ? "لا توجد نتائج" : "No results"}
                   </td>
                 </tr>
               ) : (
-                users.map((u) => (
+                filteredUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-zinc-50">
                     <td className="px-4 py-3 font-medium">{u.full_name || "-"}</td>
                     <td className="px-4 py-3 text-zinc-500">{u.email}</td>
@@ -142,6 +184,12 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                             ? isRtl ? "مدير" : "Admin"
                             : isRtl ? "مستخدم" : "User"}
                         </span>
+                        {u.is_main_admin && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/30">
+                            <Crown className="w-3 h-3" />
+                            {isRtl ? "المدير الأساسي" : "Main Admin"}
+                          </span>
+                        )}
                         {u.blocked && (
                           <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                             {isRtl ? "محظور" : "Blocked"}
@@ -156,10 +204,10 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openConfirm(u, u.blocked ? "unblock" : "block")}
-                          disabled={togglingId === u.id || u.is_me}
-                          title={u.is_me ? "This is your own account" : undefined}
+                          disabled={togglingId === u.id || isProtectedUser(u)}
+                          title={isProtectedUser(u) ? protectionLabel(u, isRtl) : undefined}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
-                            u.is_me
+                            isProtectedUser(u)
                               ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
                               : u.blocked
                                 ? "bg-green-50 text-green-700 hover:bg-green-100"
@@ -168,25 +216,25 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                         >
                           {togglingId === u.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : u.is_me ? (
+                          ) : isProtectedUser(u) ? (
                             <Ban className="w-3 h-3" />
                           ) : u.blocked ? (
                             <CheckCircle2 className="w-3 h-3" />
                           ) : (
                             <Ban className="w-3 h-3" />
                           )}
-                          {u.is_me
-                            ? isRtl ? "حسابك الحالي" : "Your account"
+                          {isProtectedUser(u)
+                            ? protectionLabel(u, isRtl)
                             : u.blocked
                               ? isRtl ? "فك الحظر" : "Unblock"
                               : isRtl ? "حظر الحساب" : "Block"}
                         </button>
                         <button
                           onClick={() => openConfirm(u, u.role === "admin" ? "demote" : "promote")}
-                          disabled={togglingId === u.id || u.is_me}
-                          title={u.is_me ? "This is your own account" : undefined}
+                          disabled={togglingId === u.id || isProtectedUser(u)}
+                          title={isProtectedUser(u) ? protectionLabel(u, isRtl) : undefined}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
-                            u.is_me
+                            isProtectedUser(u)
                               ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
                               : u.role === "admin"
                                 ? "bg-red-50 text-red-600 hover:bg-red-100"
@@ -195,15 +243,15 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                         >
                           {togglingId === u.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : u.is_me ? (
+                          ) : isProtectedUser(u) ? (
                             <Shield className="w-3 h-3" />
                           ) : u.role === "admin" ? (
                             <ShieldOff className="w-3 h-3" />
                           ) : (
                             <Shield className="w-3 h-3" />
                           )}
-                          {u.is_me
-                            ? isRtl ? "حسابك الحالي" : "Your account"
+                          {isProtectedUser(u)
+                            ? protectionLabel(u, isRtl)
                             : u.role === "admin"
                               ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
                               : isRtl ? "تعيين مدير" : "Make Admin"}
@@ -219,12 +267,12 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
       </div>
 
       <div className="md:hidden space-y-3">
-        {users.length === 0 ? (
+        {filteredUsers.length === 0 ? (
           <div className="bg-white rounded-xl border border-zinc-200 p-12 text-center text-zinc-400">
             {isRtl ? "لا توجد نتائج" : "No results"}
           </div>
         ) : (
-          users.map((u) => (
+          filteredUsers.map((u) => (
             <div key={u.id} className="bg-white rounded-xl border border-zinc-200 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -246,6 +294,12 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                       ? isRtl ? "مدير" : "Admin"
                       : isRtl ? "مستخدم" : "User"}
                   </span>
+                  {u.is_main_admin && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/30">
+                      <Crown className="w-3 h-3" />
+                      {isRtl ? "المدير الأساسي" : "Main Admin"}
+                    </span>
+                  )}
                   {u.blocked && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                       {isRtl ? "محظور" : "Blocked"}
@@ -256,9 +310,9 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={() => openConfirm(u, u.blocked ? "unblock" : "block")}
-                  disabled={togglingId === u.id || u.is_me}
+                  disabled={togglingId === u.id || isProtectedUser(u)}
                   className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
-                    u.is_me
+                    isProtectedUser(u)
                       ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
                       : u.blocked
                         ? "bg-green-50 text-green-700 hover:bg-green-100"
@@ -267,24 +321,24 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                 >
                   {togglingId === u.id ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : u.is_me ? (
+                  ) : isProtectedUser(u) ? (
                     <Ban className="w-3 h-3" />
                   ) : u.blocked ? (
                     <CheckCircle2 className="w-3 h-3" />
                   ) : (
                     <Ban className="w-3 h-3" />
                   )}
-                  {u.is_me
-                    ? isRtl ? "حسابك الحالي" : "Your account"
+                  {isProtectedUser(u)
+                    ? protectionLabel(u, isRtl)
                     : u.blocked
                       ? isRtl ? "فك الحظر" : "Unblock"
                       : isRtl ? "حظر الحساب" : "Block"}
                 </button>
                 <button
                   onClick={() => openConfirm(u, u.role === "admin" ? "demote" : "promote")}
-                  disabled={togglingId === u.id || u.is_me}
+                  disabled={togglingId === u.id || isProtectedUser(u)}
                   className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
-                    u.is_me
+                    isProtectedUser(u)
                       ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
                       : u.role === "admin"
                         ? "bg-red-50 text-red-600 hover:bg-red-100"
@@ -293,15 +347,15 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                 >
                   {togglingId === u.id ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : u.is_me ? (
+                  ) : isProtectedUser(u) ? (
                     <Shield className="w-3 h-3" />
                   ) : u.role === "admin" ? (
                     <ShieldOff className="w-3 h-3" />
                   ) : (
                     <Shield className="w-3 h-3" />
                   )}
-                  {u.is_me
-                    ? isRtl ? "حسابك الحالي" : "Your account"
+                  {isProtectedUser(u)
+                    ? protectionLabel(u, isRtl)
                     : u.role === "admin"
                       ? isRtl ? "إزالة صلاحية المدير" : "Remove Admin"
                       : isRtl ? "تعيين مدير" : "Make Admin"}

@@ -40,6 +40,7 @@ export default function Footer({ locale }: { locale: string }) {
             <ul className="space-y-2 text-sm">
               <li><Link href="/cart" className="hover:text-accent transition-colors">{t("cart")}</Link></li>
               <li><Link href="/orders" className="hover:text-accent transition-colors">{t("orders")}</Link></li>
+              <li><Link href="/help" className="hover:text-accent transition-colors">{t("help")}</Link></li>
               <li><Link href="/auth" className="hover:text-accent transition-colors">{t("login")}</Link></li>
             </ul>
           </div>

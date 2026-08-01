@@ -12,7 +12,8 @@
     "language": "Language",
     "currency": "USD",
     "account": "My Account",
-    "wishlist": "Wishlist"
+    "wishlist": "Wishlist",
+    "help": "Help"
   },
   "home": {
     "hero_title": "Step Up Your Style",
@@ -126,9 +127,18 @@
     "shipping_address": "Shipping Address",
     "contact_info": "Contact Info"
   },
+  "help": {
+    "title": "Help & Support",
+    "subtitle": "We're here to help you. Reach us through any of the channels below.",
+    "instagram": "Instagram",
+    "instagram_desc": "Follow us and send us a message on Instagram.",
+    "phone": "Call Us",
+    "phone_desc": "Talk to our support team by phone.",
+    "email": "Email Us",
+    "email_desc": "Send us an email and we'll reply as soon as possible."
+  },
   "auth": {
-    "login_title": "Welcome Back",
-    "register_title": "Create Account",
+    "login_title": "Welcome Back",    "register_title": "Create Account",
     "email": "Email",
     "password": "Password",
     "name": "Full Name",

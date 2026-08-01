@@ -15,6 +15,7 @@ export type UserProfile = {
   created_at: string
   updated_at?: string
   is_me?: boolean
+  is_main_admin?: boolean
 }
 
 export type ProductCategory = {
