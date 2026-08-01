@@ -209,24 +209,24 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
                   <FileIcon className="w-10 h-10 text-zinc-300" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <div className="absolute top-2 end-2 flex items-center gap-1.5">
                 <button
                   onClick={() => copyUrl(item.url, item.id)}
-                  className="p-2 bg-white rounded-lg hover:bg-zinc-100 transition-colors cursor-pointer"
+                  className="p-2 bg-white/90 backdrop-blur rounded-lg hover:bg-white transition-colors cursor-pointer shadow-sm"
                   title={isRtl ? "نسخ الرابط" : "Copy URL"}
                 >
                   {copiedId === item.id ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-zinc-600" />}
                 </button>
                 <button
                   onClick={() => setDeleteId(item.id)}
-                  className="p-2 bg-white rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                  className="p-2 bg-white/90 backdrop-blur rounded-lg hover:bg-red-50 transition-colors cursor-pointer shadow-sm"
                   title={isRtl ? "حذف" : "Delete"}
                 >
                   <Trash2 className="w-4 h-4 text-red-500" />
                 </button>
               </div>
-              <div className="p-2">
-                <p className="text-[10px] text-zinc-400 truncate">{item.url.split("/").pop()}</p>
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/40 to-transparent p-2">
+                <p className="text-[10px] text-white truncate">{item.url.split("/").pop()}</p>
               </div>
             </div>
           ))}

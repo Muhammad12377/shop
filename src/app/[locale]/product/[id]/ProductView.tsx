@@ -126,14 +126,14 @@ export default function ProductView({ product, siblings }: { product: any; sibli
     <>
       <Header />
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <nav className="flex items-center gap-2 text-sm text-zinc-400 mb-6">
-          <Link href="/" className="hover:text-accent">{isRtl ? "الرئيسية" : "Home"}</Link>
+        <nav className="flex flex-wrap items-center gap-2 text-sm text-zinc-400 mb-6">
+          <Link href="/" className="hover:text-accent whitespace-nowrap">{isRtl ? "الرئيسية" : "Home"}</Link>
           <span>/</span>
-          <Link href="/products" className="hover:text-accent">{isRtl ? "منتجات" : "Products"}</Link>
+          <Link href="/products" className="hover:text-accent whitespace-nowrap">{isRtl ? "منتجات" : "Products"}</Link>
           {product.category && (
             <>
               <span>/</span>
-              <Link href={`/products?category=${product.category.slug}`} className="hover:text-accent">
+              <Link href={`/products?category=${product.category.slug}`} className="hover:text-accent truncate max-w-[140px] sm:max-w-full">
                 {isRtl ? product.category.name_ar : product.category.name_en}
               </Link>
             </>
@@ -355,7 +355,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
               </button>
             </div>
 
-            <div className="flex items-center gap-6 mt-6 pt-6 border-t border-zinc-100 text-sm text-zinc-500">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-6 pt-6 border-t border-zinc-100 text-sm text-zinc-500">
               <span className="flex items-center gap-1.5">
                 <Truck className="w-4 h-4" />
                 {isRtl ? "توصيل سريع" : "Fast Delivery"}

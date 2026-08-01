@@ -202,7 +202,7 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-xl border border-zinc-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50">
@@ -295,11 +295,90 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
         </div>
       </div>
 
+      <div className="md:hidden space-y-3">
+        {categories.length === 0 ? (
+          <div className="bg-white rounded-xl border border-zinc-200 p-12 text-center text-zinc-400">
+            {isRtl ? "لا توجد تصنيفات" : "No categories"}
+          </div>
+        ) : (
+          categories.map((cat, index) => (
+            <div key={cat.id} className="bg-white rounded-xl border border-zinc-200 p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-16 h-10 rounded-lg overflow-hidden border border-zinc-200 bg-zinc-100 shrink-0 relative">
+                  {cat.image_url ? (
+                    <Image src={cat.image_url} alt="" fill sizes="64px" className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-300">
+                      <ImageIcon className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">
+                    {isRtl ? cat.name_ar || cat.name_en : cat.name_en || cat.name_ar}
+                  </p>
+                  <p className="text-xs text-zinc-400 truncate">/{cat.slug}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[11px] text-zinc-400">
+                      {isRtl ? "ترتيب:" : "Order:"} {cat.sort_order}
+                    </span>
+                    <button
+                      onClick={() => toggleActive(cat)}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer ${
+                        cat.active
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-red-100 text-red-700 hover:bg-red-200"
+                      }`}
+                    >
+                      {cat.active
+                        ? isRtl ? "نشط" : "Active"
+                        : isRtl ? "غير نشط" : "Inactive"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => moveUp(index)}
+                  disabled={index === 0}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-medium hover:bg-zinc-200 disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                  {isRtl ? "أعلى" : "Up"}
+                </button>
+                <button
+                  onClick={() => moveDown(index)}
+                  disabled={index === categories.length - 1}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-medium hover:bg-zinc-200 disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  {isRtl ? "أسفل" : "Down"}
+                </button>
+                <button
+                  onClick={() => openEdit(cat)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-100 text-zinc-700 text-xs font-medium hover:bg-zinc-200 transition-colors cursor-pointer"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  {isRtl ? "تعديل" : "Edit"}
+                </button>
+                <button
+                  onClick={() => setDeleteId(cat.id)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {isRtl ? "حذف" : "Delete"}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 pb-10">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setModalOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg z-10">
-            <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+          <div className="relative bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-lg max-h-[94vh] overflow-y-auto z-10">
+            <div className="sticky top-0 bg-white border-b border-zinc-200 px-4 sm:px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">
                 {editing
                   ? isRtl ? "تعديل تصنيف" : "Edit Category"
@@ -309,8 +388,8 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "الاسم (إنجليزي)" : "Name (English)"}</label>
                   <input
@@ -422,7 +501,7 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                 </div>
               </div>
             </div>
-            <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-6 py-4 flex items-center justify-end gap-3">
+            <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-4 sm:px-6 py-4 flex items-center justify-end gap-3">
               <button
                 onClick={() => setModalOpen(false)}
                 className="px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg cursor-pointer"
@@ -443,16 +522,16 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
       )}
 
       {mediaModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 pb-10">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMediaModalOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto z-10">
-            <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+          <div className="relative bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-3xl max-h-[94vh] overflow-y-auto z-10">
+            <div className="sticky top-0 bg-white border-b border-zinc-200 px-4 sm:px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">{isRtl ? "اختر صورة من المكتبة" : "Choose an image from library"}</h2>
               <button onClick={() => setMediaModalOpen(false)} className="p-1 hover:bg-zinc-100 rounded-lg cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {mediaItems.length === 0 ? (
                 <div className="text-center py-12">
                   <FileIcon className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
@@ -466,25 +545,49 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                   {mediaItems.map((item) => {
                     const selected = form.image_url === item.url
                     return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setForm({ ...form, image_url: item.url })
-                          toast.success(isRtl ? "تم الاختيار" : "Selected")
-                          setMediaModalOpen(false)
-                        }}
-                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                          selected ? "border-green-500" : "border-transparent hover:border-[#f97316]"
-                        }`}
-                      >
-                        <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
-                        {selected && (
-                          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
-                            <Check className="w-6 h-6 text-white" />
-                          </div>
-                        )}
-                      </button>
+                      <div key={item.id} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm({ ...form, image_url: item.url })
+                            toast.success(isRtl ? "تم الاختيار" : "Selected")
+                            setMediaModalOpen(false)
+                          }}
+                          className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer w-full ${
+                            selected ? "border-green-500" : "border-transparent hover:border-[#f97316]"
+                          }`}
+                        >
+                          <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
+                          {selected && (
+                            <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                              <Check className="w-6 h-6 text-white" />
+                            </div>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = item.url
+                            fetch("/api/admin/media", {
+                              method: "DELETE",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: item.id, url }),
+                            })
+                              .then((r) => r.json())
+                              .then((d) => {
+                                if (d.error) throw new Error(d.error)
+                                setMediaItems((prev) => prev.filter((m) => m.id !== item.id))
+                                if (form.image_url === url) setForm({ ...form, image_url: "" })
+                                toast.success(isRtl ? "تم حذف الصورة" : "Image deleted")
+                              })
+                              .catch(() => toast.error(isRtl ? "خطأ في الحذف" : "Delete failed"))
+                          }}
+                          className="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors cursor-pointer shadow"
+                          title={isRtl ? "حذف الصورة" : "Delete image"}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     )
                   })}
                 </div>
@@ -505,7 +608,7 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
       )}
 
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteId(null)} />
           <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10">
             <h3 className="text-lg font-semibold mb-2">{isRtl ? "تأكيد الحذف" : "Confirm Delete"}</h3>

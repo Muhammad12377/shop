@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import Image from "next/image"
-import { Loader2, Save, Upload, Image as ImageIcon, Check, FileIcon, X } from "lucide-react"
+import { Loader2, Save, Upload, Image as ImageIcon, Check, FileIcon, X, Trash2 } from "lucide-react"
 import toast from "react-hot-toast"
 import type { StoreSettings, Media } from "@/types"
 import ImageCropModal from "@/components/admin/ImageCropModal"
@@ -347,25 +347,49 @@ export default function AdminSettingsPage({ params: paramsPromise }: { params: P
                   {mediaItems.map((item) => {
                     const selected = form.hero_image_url === item.url
                     return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setForm({ ...form, hero_image_url: item.url })
-                          toast.success(isRtl ? "تم الاختيار" : "Selected")
-                          setMediaModalOpen(false)
-                        }}
-                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                          selected ? "border-green-500" : "border-transparent hover:border-[#f97316]"
-                        }`}
-                      >
-                        <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
-                        {selected && (
-                          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
-                            <Check className="w-6 h-6 text-white" />
-                          </div>
-                        )}
-                      </button>
+                      <div key={item.id} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm({ ...form, hero_image_url: item.url })
+                            toast.success(isRtl ? "تم الاختيار" : "Selected")
+                            setMediaModalOpen(false)
+                          }}
+                          className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer w-full ${
+                            selected ? "border-green-500" : "border-transparent hover:border-[#f97316]"
+                          }`}
+                        >
+                          <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
+                          {selected && (
+                            <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                              <Check className="w-6 h-6 text-white" />
+                            </div>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = item.url
+                            fetch("/api/admin/media", {
+                              method: "DELETE",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: item.id, url }),
+                            })
+                              .then((r) => r.json())
+                              .then((d) => {
+                                if (d.error) throw new Error(d.error)
+                                setMediaItems((prev) => prev.filter((m) => m.id !== item.id))
+                                if (form.hero_image_url === url) setForm({ ...form, hero_image_url: "" })
+                                toast.success(isRtl ? "تم حذف الصورة" : "Image deleted")
+                              })
+                              .catch(() => toast.error(isRtl ? "خطأ في الحذف" : "Delete failed"))
+                          }}
+                          className="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors cursor-pointer shadow"
+                          title={isRtl ? "حذف الصورة" : "Delete image"}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     )
                   })}
                 </div>

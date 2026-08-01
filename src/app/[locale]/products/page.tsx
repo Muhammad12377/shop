@@ -127,7 +127,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                 </div>
 
                 {totalPages > 1 && (
-                  <nav className="flex items-center justify-center gap-1 mt-10" aria-label="Pagination">
+                  <nav className="flex flex-wrap items-center justify-center gap-1 mt-10" aria-label="Pagination">
                     {page > 1 ? (
                       <Link
                         href={buildUrl(page - 1)}

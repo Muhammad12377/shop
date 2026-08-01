@@ -211,6 +211,28 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     setForm({ ...form, images: (form.images || []).filter((i) => i !== url) })
   }
 
+  const deleteImageFromLibrary = async (url: string) => {
+    const item = mediaItems.find((m) => m.url === url)
+    if (!item) {
+      removeImage(url)
+      return
+    }
+    try {
+      const res = await fetch("/api/admin/media", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, url: item.url }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setForm({ ...form, images: (form.images || []).filter((i) => i !== url) })
+      setMediaItems((prev) => prev.filter((m) => m.id !== item.id))
+      toast.success(isRtl ? "تم حذف الصورة من المكتبة" : "Image deleted from library")
+    } catch (err: any) {
+      toast.error(err.message || (isRtl ? "خطأ في الحذف" : "Delete failed"))
+    }
+  }
+
   const uploadMedia = async (file: File, isVideo: boolean) => {
     try {
       const fd = new FormData()
@@ -701,16 +723,28 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                 <label className="block text-sm font-medium text-zinc-700 mb-2">{isRtl ? "الصور" : "Images"}</label>
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {(form.images || []).map((url) => (
-                    <div key={url} className="relative group">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden border relative">
-                        <Image src={url} alt="" fill sizes="64px" className="object-cover" />
+                    <div key={url} className="relative">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border relative">
+                        <Image src={url} alt="" fill sizes="80px" className="object-cover" />
                       </div>
-                      <button
-                        onClick={() => removeImage(url)}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <div className="absolute -top-1.5 -end-1.5 flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => removeImage(url)}
+                          className="bg-zinc-700 text-white rounded-full p-1.5 hover:bg-zinc-800 transition-colors cursor-pointer shadow"
+                          title={isRtl ? "إزالة من المنتج" : "Remove from product"}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteImageFromLibrary(url)}
+                          className="bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors cursor-pointer shadow"
+                          title={isRtl ? "حذف من المكتبة" : "Delete from library"}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -870,27 +904,53 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   {mediaItems.map((item) => {
                     const alreadyAdded = (form.images || []).includes(item.url)
                     return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        disabled={alreadyAdded}
-                        onClick={() => {
-                          if (!alreadyAdded) {
-                            setForm({ ...form, images: [...(form.images || []), item.url] })
-                            toast.success(isRtl ? "تمت الإضافة" : "Added")
-                          }
-                        }}
-                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                          alreadyAdded ? "border-green-500 opacity-60" : "border-transparent hover:border-[#f97316]"
-                        }`}
-                      >
-                        <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
-                        {alreadyAdded && (
-                          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
-                            <Check className="w-6 h-6 text-white" />
-                          </div>
-                        )}
-                      </button>
+                      <div key={item.id} className="relative">
+                        <button
+                          type="button"
+                          disabled={alreadyAdded}
+                          onClick={() => {
+                            if (!alreadyAdded) {
+                              setForm({ ...form, images: [...(form.images || []), item.url] })
+                              toast.success(isRtl ? "تمت الإضافة" : "Added")
+                            }
+                          }}
+                          className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer w-full ${
+                            alreadyAdded ? "border-green-500 opacity-60" : "border-transparent hover:border-[#f97316]"
+                          }`}
+                        >
+                          <Image src={item.url} alt={item.alt || ""} fill sizes="160px" className="object-cover" />
+                          {alreadyAdded && (
+                            <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                              <Check className="w-6 h-6 text-white" />
+                            </div>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = item.url
+                            fetch("/api/admin/media", {
+                              method: "DELETE",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: item.id, url }),
+                            })
+                              .then((r) => r.json())
+                              .then((d) => {
+                                if (d.error) throw new Error(d.error)
+                                setMediaItems((prev) => prev.filter((m) => m.id !== item.id))
+                                if ((form.images || []).includes(url)) {
+                                  setForm({ ...form, images: (form.images || []).filter((i) => i !== url) })
+                                }
+                                toast.success(isRtl ? "تم حذف الصورة" : "Image deleted")
+                              })
+                              .catch(() => toast.error(isRtl ? "خطأ في الحذف" : "Delete failed"))
+                          }}
+                          className="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors cursor-pointer shadow"
+                          title={isRtl ? "حذف الصورة" : "Delete image"}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     )
                   })}
                 </div>
@@ -911,7 +971,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
       )}
 
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteId(null)} />
           <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10">
             <h3 className="text-lg font-semibold mb-2">{isRtl ? "تأكيد الحذف" : "Confirm Delete"}</h3>

@@ -220,7 +220,7 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
                   )}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">
+                  <p className="font-medium text-sm truncate">
                     {isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar}
                   </p>
                   <p className="text-xs text-zinc-400">
@@ -282,7 +282,7 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
                           key={z.id}
                           className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-zinc-100"
                         >
-                          <p className="flex-1 text-sm">
+                          <p className="flex-1 text-sm truncate">
                             {isRtl ? z.name_ar || z.name_en : z.name_en || z.name_ar}
                           </p>
                           <span className="text-sm font-semibold text-[#f97316]">${z.price}</span>
@@ -320,10 +320,10 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
       )}
 
       {countryModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 pb-10">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setCountryModal(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md z-10">
-            <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+          <div className="relative bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-md max-h-[94vh] overflow-y-auto z-10">
+            <div className="sticky top-0 bg-white border-b border-zinc-200 px-4 sm:px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">
                 {editingCountry
                   ? isRtl ? "تعديل دولة" : "Edit Country"
@@ -333,7 +333,7 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "الاسم (إنجليزي)" : "Name (English)"}</label>
                 <input
@@ -378,7 +378,7 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
                 {isRtl ? "نشط" : "Active"}
               </label>
             </div>
-            <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-6 py-4 flex items-center justify-end gap-3">
+            <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-4 sm:px-6 py-4 flex items-center justify-end gap-3">
               <button
                 onClick={() => setCountryModal(false)}
                 className="px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg cursor-pointer"
@@ -399,10 +399,10 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
       )}
 
       {zoneModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 pb-10">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setZoneModal(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md z-10">
-            <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+          <div className="relative bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-md max-h-[94vh] overflow-y-auto z-10">
+            <div className="sticky top-0 bg-white border-b border-zinc-200 px-4 sm:px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">
                 {editingZone
                   ? isRtl ? "تعديل محافظة" : "Edit Region"
@@ -412,7 +412,7 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "الاسم (إنجليزي)" : "Name (English)"}</label>
                 <input
@@ -457,7 +457,7 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
                 {isRtl ? "نشط" : "Active"}
               </label>
             </div>
-            <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-6 py-4 flex items-center justify-end gap-3">
+            <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-4 sm:px-6 py-4 flex items-center justify-end gap-3">
               <button
                 onClick={() => setZoneModal(false)}
                 className="px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg cursor-pointer"
@@ -478,7 +478,7 @@ export default function AdminShippingPage({ params: paramsPromise }: { params: P
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteTarget(null)} />
           <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10">
             <h3 className="text-lg font-semibold mb-2">{isRtl ? "تأكيد الحذف" : "Confirm Delete"}</h3>

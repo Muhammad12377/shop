@@ -178,14 +178,14 @@ export default function OrderDetailPage() {
                 </div>
               </div>
             )) : (
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-3 sm:gap-4">
                 {statusSteps.map((step, i) => (
                   <div key={step} className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${i <= currentStepIndex ? "bg-accent" : "bg-zinc-200"}`} />
                     <span className={`text-xs ${i <= currentStepIndex ? "text-accent font-medium" : "text-zinc-400"}`}>
                       {t(step)}
                     </span>
-                    {i < statusSteps.length - 1 && <div className="w-6 h-px bg-zinc-200" />}
+                    {i < statusSteps.length - 1 && <div className="w-4 sm:w-6 h-px bg-zinc-200" />}
                   </div>
                 ))}
               </div>
