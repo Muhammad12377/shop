@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { splitColors } from "@/lib/colors"
+import { splitColors, colorLabel } from "@/lib/colors"
 
 export default function ProductCard({
   variants,
@@ -26,12 +26,16 @@ export default function ProductCard({
   const images = list.map((v: any) => v?.images?.[0]).filter(Boolean)
   const hasMore = list.length > 1
 
+  const hasPerSize = !!(active?.size_stock && Object.keys(active.size_stock).length > 0)
+  const sizeQty = (s: string) => (hasPerSize ? Number(active?.size_stock?.[s] ?? 0) : active?.stock ?? 0)
+  const sizes: string[] = (active?.sizes || []).filter(Boolean)
+
   return (
     <div className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/40 hover:shadow-xl hover:shadow-accent/10 hover:-translate-y-1.5 transition-all duration-300 will-change-transform">
       <Link
         href={`/product/${active?.id}`}
         locale={locale}
-        className="relative block aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 overflow-hidden"
+        className="relative block aspect-[4/5] bg-gradient-to-br from-zinc-200 to-zinc-300 overflow-hidden"
       >
         {active?.images?.[0] ? (
           <>
@@ -64,8 +68,48 @@ export default function ProductCard({
       </Link>
 
       <div className="p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-xs text-zinc-400 truncate">
+            {active?.category ? (isRtl ? active.category.name_ar : active.category.name_en) : ""}
+          </p>
+          <p className="text-accent font-bold text-base sm:text-lg">${active?.price}</p>
+        </div>
+        <Link href={`/product/${active?.id}`} locale={locale} className="block">
+          <h3 className="font-medium text-sm sm:text-lg group-hover:text-accent transition-colors truncate">
+            {name}
+          </h3>
+        </Link>
+        <div className="flex items-center gap-2 mt-1 mb-2.5">
+          {active?.compare_price && (
+            <p className="text-xs text-zinc-400 line-through">${active?.compare_price}</p>
+          )}
+        </div>
+
+        {sizes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 mb-2">
+            <span className="text-[11px] text-zinc-400 me-0.5">
+              {isRtl ? "المقاسات:" : "Sizes:"}
+            </span>
+            {sizes.map((s) => {
+              const qty = sizeQty(s)
+              return (
+                <span
+                  key={s}
+                  className={`px-2 py-0.5 rounded-md text-[11px] border ${
+                    qty <= 0
+                      ? "text-zinc-300 border-zinc-100 line-through"
+                      : "text-zinc-600 border-zinc-200"
+                  }`}
+                >
+                  {s}
+                </span>
+              )
+            })}
+          </div>
+        )}
+
         {hasMore && (
-          <div className="flex items-center gap-1.5 mb-2.5">
+          <div className="flex items-center gap-1.5">
             {list.map((v: any, i: number) => {
               const hexes = splitColors(v?.colors?.[0])
               return (
@@ -73,6 +117,7 @@ export default function ProductCard({
                   key={v?.id || i}
                   type="button"
                   onClick={() => setActiveIdx(i)}
+                  title={colorLabel(v?.colors?.[0], isRtl ? "ar" : "en") || undefined}
                   aria-label={`color ${i + 1}`}
                   className={`w-4 h-4 rounded-full border border-zinc-300 transition-transform hover:scale-125 ${
                     i === activeIdx ? "ring-2 ring-accent ring-offset-1 scale-110" : ""
@@ -91,20 +136,6 @@ export default function ProductCard({
             </span>
           </div>
         )}
-        <p className="text-xs text-zinc-400 mb-1 truncate">
-          {active?.category ? (isRtl ? active.category.name_ar : active.category.name_en) : ""}
-        </p>
-        <Link href={`/product/${active?.id}`} locale={locale} className="block">
-          <h3 className="font-medium text-sm sm:text-lg group-hover:text-accent transition-colors truncate">
-            {name}
-          </h3>
-        </Link>
-        <div className="flex items-center gap-2 mt-1.5">
-          <p className="text-accent font-bold text-base sm:text-xl">${active?.price}</p>
-          {active?.compare_price && (
-            <p className="text-xs text-zinc-400 line-through">${active?.compare_price}</p>
-          )}
-        </div>
       </div>
     </div>
   )

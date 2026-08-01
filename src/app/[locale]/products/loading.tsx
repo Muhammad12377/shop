@@ -22,10 +22,10 @@ export default function Loading() {
             <div key={i} className="h-10 w-28 shrink-0 rounded-full bg-zinc-200 animate-pulse" />
           ))}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-zinc-100 overflow-hidden">
-              <div className="aspect-square bg-zinc-200 animate-pulse" />
+              <div className="aspect-[4/5] bg-zinc-200 animate-pulse" />
               <div className="p-4 space-y-3">
                 <div className="h-4 w-3/4 bg-zinc-200 rounded-lg animate-pulse" />
                 <div className="h-5 w-1/2 bg-zinc-200 rounded-lg animate-pulse" />
