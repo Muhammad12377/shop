@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props) {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: "home" })
   return {
-    title: "Sneakers Club Syria",
+    title: "Sneakers Take Off",
     description: t("hero_subtitle"),
   }
 }

@@ -14,7 +14,7 @@ export default function AdminHeader({
   mobileOpen: boolean
   onToggleMenu: () => void
 }) {
-  const [storeName, setStoreName] = useState("Sneakers Club")
+  const [storeName, setStoreName] = useState("Sneakers Take Off")
   const isRtl = locale === "ar"
 
   useEffect(() => {

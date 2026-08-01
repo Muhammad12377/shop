@@ -67,7 +67,7 @@ export default function Footer({ locale }: { locale: string }) {
         </div>
 
         <div className="border-t border-zinc-800 mt-8 pt-8 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} Sneakers Club Syria. {isRtl ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
+          <p>&copy; {new Date().getFullYear()} Sneakers Take Off. {isRtl ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
         </div>
       </div>
     </footer>

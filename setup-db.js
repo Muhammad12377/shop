@@ -100,7 +100,7 @@ async function setupDatabase() {
   const sqlPath = path.join(__dirname, "supabase", sqlFile)
 
   console.log("=".repeat(50))
-  console.log("Sneakers Club Syria - Database Setup")
+  console.log("Sneakers Take Off - Database Setup")
   console.log("=".repeat(50))
 
   if (!fs.existsSync(sqlPath)) {

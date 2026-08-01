@@ -18,6 +18,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Missing fields" }, { status: 400 })
     }
 
+    if (!email.endsWith("@gmail.com")) {
+      return NextResponse.json(
+        { ok: false, error: "Only @gmail.com emails are allowed", code: "email_domain" },
+        { status: 400 }
+      )
+    }
+
     const captcha = await verifyTurnstileToken(captchaToken)
     if (!captcha.ok) {
       return NextResponse.json({ ok: false, error: "captcha_failed", code: captcha.error }, { status: 400 })

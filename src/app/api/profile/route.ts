@@ -40,6 +40,23 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: false, error: "No valid fields to update" } satisfies ApiResponse, { status: 400 })
   }
 
+  if (typeof allowedFields.full_name === "string" && allowedFields.full_name.trim()) {
+    const name = allowedFields.full_name.trim()
+    const { data: duplicate } = await auth.supabase
+      .from("profiles")
+      .select("id")
+      .ilike("full_name", name)
+      .neq("id", auth.user.id)
+      .limit(1)
+    if (duplicate && duplicate.length > 0) {
+      return NextResponse.json(
+        { success: false, error: "This name is already used by another account", code: "name_taken" } satisfies ApiResponse,
+        { status: 400 }
+      )
+    }
+    allowedFields.full_name = name
+  }
+
   const { data, error } = await auth.supabase
     .from("profiles")
     .update(allowedFields)

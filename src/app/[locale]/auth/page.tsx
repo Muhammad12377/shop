@@ -106,6 +106,12 @@ export default function AuthPage() {
         ? "عدد كبير جدًا من الطلبات من جهازك. حاول مجددًا بعد بضع دقائق."
         : "Too many requests from your device. Please try again in a few minutes."
     }
+    if (code === "email_domain") {
+      return isRtl ? "يُسمح فقط ببريد Gmail (@gmail.com)" : "Only @gmail.com emails are allowed"
+    }
+    if (code === "name_taken") {
+      return isRtl ? "هذا الاسم مستخدم بالفعل في حساب آخر" : "This name is already used by another account"
+    }
     return m
   }
 
@@ -340,6 +346,14 @@ export default function AuthPage() {
           toast.error(isRtl ? "كلمتا المرور غير متطابقتين" : "Passwords do not match")
           return
         }
+        if (!name.trim()) {
+          toast.error(isRtl ? "أدخل الاسم" : "Enter your name")
+          return
+        }
+        if (!email.trim().toLowerCase().endsWith("@gmail.com")) {
+          toast.error(isRtl ? "يُسمح فقط ببريد Gmail (@gmail.com)" : "Only @gmail.com emails are allowed")
+          return
+        }
         await sendRegisterOtp(email.trim(), name)
         toast.success(
           isRtl ? "تم إنشاء الحساب! أدخل رمز التحقق المرسل إلى بريدك" : "Account created! Enter the code sent to your email"
@@ -403,7 +417,7 @@ export default function AuthPage() {
                   ? isRtl ? "أدخل بريدك وسنرسل لك رمز تحقق" : "Enter your email and we'll send a code"
                   : mode === "newpassword"
                     ? isRtl ? "اختر كلمة مرور جديدة لحسابك" : "Choose a new password for your account"
-                    : "Sneakers Club Syria"}
+                    : "Sneakers Take Off"}
             </p>
 
             {blockedNotice && (mode === "login" || mode === "register") && (

@@ -148,32 +148,41 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
             <div key={order.id} className="bg-white rounded-xl border border-zinc-200">
               <button
                 onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
-                className="w-full flex items-center justify-between p-4 text-left cursor-pointer hover:bg-zinc-50 transition-colors"
+                className="w-full flex items-center justify-between p-4 gap-3 text-left cursor-pointer hover:bg-zinc-50 transition-colors"
               >
-                <div className="flex items-center gap-4 flex-1">
-                  <span className="font-mono text-sm font-medium">#{order.id.slice(0, 8)}</span>
-                  <span className="text-sm text-zinc-600">{order.full_name}</span>
-                  {order.user_email && (
-                    <span className="text-xs text-zinc-400">{order.user_email}</span>
-                  )}
-                  <span className="text-sm text-zinc-400">{(order.items?.length || 0)} {isRtl ? "منتج" : "items"}</span>
-                  <span className="text-sm font-medium">${order.total?.toFixed(2)}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || "bg-zinc-100"}`}>
-                    {isRtl ? statusLabels[order.status]?.ar || order.status : statusLabels[order.status]?.en || order.status}
-                  </span>
-                  {order.status === "cancelled" && order.cancelled_by && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-600">
-                      {order.cancelled_by === "customer"
-                        ? isRtl ? "ألغى الزبون" : "Cancelled by customer"
-                        : isRtl ? "ألغاه الإدمن" : "Cancelled by admin"}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-sm font-medium">#{order.id.slice(0, 8)}</span>
+                    <span className="text-sm text-zinc-600 truncate">{order.full_name}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || "bg-zinc-100"}`}>
+                      {isRtl ? statusLabels[order.status]?.ar || order.status : statusLabels[order.status]?.en || order.status}
                     </span>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap mt-1">
+                    {order.user_email && (
+                      <span className="text-xs text-zinc-400 truncate max-w-full">{order.user_email}</span>
+                    )}
+                    <span className="text-xs text-zinc-400">{(order.items?.length || 0)} {isRtl ? "منتج" : "items"}</span>
+                    <span className="text-sm font-medium">${order.total?.toFixed(2)}</span>
+                    {order.status === "cancelled" && order.cancelled_by && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-600">
+                        {order.cancelled_by === "customer"
+                          ? isRtl ? "ألغى الزبون" : "Cancelled by customer"
+                          : isRtl ? "ألغاه الإدمن" : "Cancelled by admin"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 md:hidden">
+                    <span className="text-xs text-zinc-400" title={order.created_at}>
+                      {new Date(order.created_at).toLocaleString(isRtl ? "ar" : "en-US")}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-zinc-400" title={order.created_at}>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="hidden md:inline text-xs text-zinc-400" title={order.created_at}>
                     {new Date(order.created_at).toLocaleString(isRtl ? "ar" : "en-US")}
                   </span>
-                  {expandedId === order.id ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                  {expandedId === order.id ? <ChevronUp className="w-4 h-4 text-zinc-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />}
                 </div>
               </button>
 

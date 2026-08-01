@@ -1,5 +1,5 @@
 -- ============================================
--- Sneakers Club Syria - Database Schema
+-- Sneakers Take Off - Database Schema
 -- ============================================
 
 -- 1. Profiles (extends auth.users)

@@ -1,4 +1,4 @@
--- Sneakers Club Syria v2 - Complete Schema
+-- Sneakers Take Off v2 - Complete Schema
 -- Run this as ONE statement
 
 -- Drop existing policies on tables that exist from v1
@@ -226,7 +226,7 @@ CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW
 
 -- Default data
 INSERT INTO settings (key, value) VALUES
-  ('store_name', '"Sneakers Club Syria"'),
+  ('store_name', '"Sneakers Take Off"'),
   ('store_description', '"Your trusted store for premium sneakers"'),
   ('currency', '"USD"'),
   ('shipping_fee', '5.00'),

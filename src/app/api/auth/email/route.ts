@@ -84,25 +84,25 @@ export async function POST(req: NextRequest) {
 
   const label = TYPE_LABEL[actionType] || "continue"
   const subject = isNumericCode
-    ? `Your Sneakers Club code: ${token}`
-    : `Sneakers Club - ${label}`
+    ? `Your Sneakers Take Off code: ${token}`
+    : `Sneakers Take Off - ${label}`
 
   const html = isNumericCode
     ? `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#18181b;margin:0 0 12px">Your Sneakers Club verification code</h2>
+        <h2 style="color:#18181b;margin:0 0 12px">Your Sneakers Take Off verification code</h2>
         <p style="color:#52525b;margin:0 0 16px">Use this code to ${label}:</p>
         <p style="font-size:30px;font-weight:bold;letter-spacing:8px;color:#f97316;margin:0 0 20px">${token}</p>
         <p style="color:#a1a1aa;font-size:12px;margin:0">This code expires shortly and can only be used once.</p>
       </div>`
     : `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#18181b;margin:0 0 12px">Sneakers Club - ${label}</h2>
+        <h2 style="color:#18181b;margin:0 0 12px">Sneakers Take Off - ${label}</h2>
         <p style="color:#52525b;margin:0 0 20px">Click the button below to continue:</p>
         ${link ? `<p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#f97316;color:#ffffff;text-decoration:none;border-radius:8px">Continue</a></p>` : "<p>Please try again.</p>"}
       </div>`
 
   const text = isNumericCode
-    ? `Your Sneakers Club verification code is: ${token}\n\nUse it to ${label}. This code expires shortly and can only be used once.`
-    : `Sneakers Club - ${label}\n\n${link ? `Open this link to continue: ${link}` : "Please try again."}`
+    ? `Your Sneakers Take Off verification code is: ${token}\n\nUse it to ${label}. This code expires shortly and can only be used once.`
+    : `Sneakers Take Off - ${label}\n\n${link ? `Open this link to continue: ${link}` : "Please try again."}`
 
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await transporter.sendMail({
-      from: `Sneakers Club <${process.env.GMAIL_SMTP_USER}>`,
+      from: `Sneakers Take Off <${process.env.GMAIL_SMTP_USER}>`,
       to: email,
       replyTo: process.env.GMAIL_SMTP_USER,
       subject,

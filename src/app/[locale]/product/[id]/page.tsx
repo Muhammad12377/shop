@@ -11,9 +11,9 @@ type Props = {
 export async function generateMetadata({ params }: Props) {
   const { locale, id } = await params
   const product = await getCachedProduct(id)
-  if (!product) return { title: "Sneakers Club Syria" }
+  if (!product) return { title: "Sneakers Take Off" }
   return {
-    title: `${locale === "ar" ? product.name_ar || product.name_en : product.name_en || product.name_ar} - Sneakers Club Syria`,
+    title: `${locale === "ar" ? product.name_ar || product.name_en : product.name_en || product.name_ar} - Sneakers Take Off`,
     description: locale === "ar" ? product.description_ar || undefined : product.description_en || undefined,
   }
 }

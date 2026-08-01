@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: "nav" })
 
   return {
-    title: "Sneakers Club Syria",
+    title: "Sneakers Take Off",
     description: t("home"),
   }
 }

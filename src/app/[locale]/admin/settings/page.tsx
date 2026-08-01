@@ -7,7 +7,7 @@ import toast from "react-hot-toast"
 import type { StoreSettings, Media } from "@/types"
 
 const defaultSettings: StoreSettings = {
-  store_name: "Sneakers Club",
+  store_name: "Sneakers Take Off",
   store_description: "",
   currency: "USD",
   shipping_fee: 0,
