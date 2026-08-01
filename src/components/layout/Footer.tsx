@@ -16,7 +16,7 @@ export default function Footer({ locale }: { locale: string }) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <h3 className="text-white text-lg font-bold mb-4">
-              <span className="text-accent">SNEAKERS</span> CLUB
+              <span className="text-accent">SNEAKERS</span> TAKE OFF
             </h3>
             <p className="text-sm leading-relaxed">
               {isRtl

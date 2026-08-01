@@ -62,7 +62,7 @@ export default function Header() {
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight">
               <span className="text-accent">SNEAKERS</span>
-              <span className="text-primary"> CLUB</span>
+              <span className="text-primary"> TAKE OFF</span>
             </span>
           </Link>
 
@@ -212,7 +212,7 @@ export default function Header() {
             <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2">
               <span className="text-lg font-bold tracking-tight">
                 <span className="text-accent">SNEAKERS</span>
-                <span className="text-primary"> CLUB</span>
+                <span className="text-primary"> TAKE OFF</span>
               </span>
             </Link>
             <button
