@@ -7,11 +7,10 @@ import { createClient } from "@/lib/supabase/client"
 import { Link } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import toast from "react-hot-toast"
-import { Heart, ShoppingCart, Trash2, ArrowLeft } from "lucide-react"
+import { Heart, ShoppingCart, Trash2, ArrowLeft, Check } from "lucide-react"
 
 export default function WishlistPage() {
   const t = useTranslations("account")
-  const pt = useTranslations("product")
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
@@ -70,7 +69,31 @@ export default function WishlistPage() {
       quantity: 1,
       slug: product.slug,
     })
-    toast.success(pt("add_to_cart"))
+    toast.custom(
+      (tEl) => (
+        <div className="flex items-center gap-3 bg-white rounded-xl shadow-lg border border-zinc-100 px-4 py-3">
+          <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <Check className="w-4 h-4 text-green-600" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-zinc-900">
+              {isRtl ? "تمت الإضافة إلى السلة" : "Added to cart"}
+            </p>
+            <p className="text-xs text-zinc-500 truncate">
+              {isRtl ? product.name_ar : product.name_en}
+            </p>
+          </div>
+          <Link
+            href="/cart"
+            onClick={() => toast.dismiss(tEl.id)}
+            className="shrink-0 text-xs font-semibold text-accent bg-accent/10 hover:bg-accent/20 px-3 py-1.5 rounded-full transition-colors"
+          >
+            {isRtl ? "عرض السلة" : "View Cart"}
+          </Link>
+        </div>
+      ),
+      { duration: 3000 }
+    )
   }
 
   if (loading) {

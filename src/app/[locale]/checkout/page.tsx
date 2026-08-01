@@ -30,7 +30,6 @@ export default function CheckoutPage() {
     full_name: "",
     phone: "",
     address: "",
-    city: "",
     notes: "",
   })
   const [phoneCode, setPhoneCode] = useState("+963")
@@ -62,7 +61,6 @@ export default function CheckoutPage() {
                 full_name: defaultAddr.full_name,
                 phone: phone.number,
                 address: defaultAddr.address,
-                city: defaultAddr.city,
                 notes: "",
               })
             }
@@ -118,7 +116,6 @@ export default function CheckoutPage() {
       full_name: addr.full_name,
       phone: phone.number,
       address: addr.address,
-      city: addr.city,
       notes: form.notes,
     })
   }
@@ -224,7 +221,7 @@ export default function CheckoutPage() {
           full_name: form.full_name,
           phone: phoneCode + cleanPhone,
           address: form.address,
-          city: form.city,
+          city: selectedZone?.name_en || "",
           notes: form.notes,
           coupon_code: appliedCoupon?.code || null,
           country_id: selectedCountryId || null,
@@ -239,11 +236,6 @@ export default function CheckoutPage() {
       }
 
       clearCart()
-      fetch("/api/notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "new_order", order_id: result.data.id }),
-      }).catch(() => {})
       toast.success(t("order_confirmed"))
       router.push(`/order-confirmed?id=${result.data.id}`)
     } catch (err: any) {
@@ -403,16 +395,6 @@ export default function CheckoutPage() {
                     type="text"
                     value={form.address}
                     onChange={(e) => updateField("address", e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">{t("city")}</label>
-                  <input
-                    type="text"
-                    value={form.city}
-                    onChange={(e) => updateField("city", e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
                     required
                   />

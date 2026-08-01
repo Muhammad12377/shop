@@ -30,6 +30,20 @@ async function applyStock(supabase: any, items: any[], sign: 1 | -1) {
   }
 }
 
+async function applyCoupon(supabase: any, couponCode: string | null, delta: 1 | -1) {
+  if (!couponCode) return
+  const { data: coupon } = await supabase
+    .from("coupons")
+    .select("used_count")
+    .eq("code", couponCode)
+    .maybeSingle()
+  if (!coupon) return
+  await supabase
+    .from("coupons")
+    .update({ used_count: Math.max(0, (Number(coupon.used_count) || 0) + delta) })
+    .eq("code", couponCode)
+}
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -44,7 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const { data: order } = await supabase
       .from("orders")
-      .select("status, items, user_id")
+      .select("status, items, user_id, coupon_code")
       .eq("id", id)
       .single()
 
@@ -70,6 +84,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (movedInto && !movedOut) {
       await applyStock(supabase, order.items, -1)
+      await applyCoupon(supabase, order.coupon_code, 1)
       const seen = new Set<string>()
       for (const item of order.items || []) {
         if (!item?.product_id || seen.has(item.product_id)) continue
@@ -91,10 +106,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (status === "cancelled" && movedOut) {
       await applyStock(supabase, order.items, 1)
+      await applyCoupon(supabase, order.coupon_code, -1)
     }
 
     if (status === "fake" && movedOut) {
       await applyStock(supabase, order.items, 1)
+      await applyCoupon(supabase, order.coupon_code, -1)
     }
 
     if (note) {

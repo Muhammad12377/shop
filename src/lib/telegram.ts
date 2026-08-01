@@ -10,6 +10,42 @@ const STATUS_AR: Record<string, string> = {
   fake: "كاذب",
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  SYP: "ل.س",
+  EUR: "€",
+  GBP: "£",
+  SAR: "ر.س",
+  AED: "د.إ",
+  EGP: "ج.م",
+  QAR: "ر.ق",
+  KWD: "د.ك",
+  BHD: "د.ب",
+  OMR: "ر.ع",
+  TRY: "₺",
+}
+
+let cachedCurrency: string | null = null
+
+async function getCurrencyCode(): Promise<string> {
+  if (cachedCurrency) return cachedCurrency
+  try {
+    const { createAdminClient } = await import("@/lib/supabase/admin")
+    const supabase = createAdminClient()
+    const { data } = await supabase.from("settings").select("value").eq("key", "currency").maybeSingle()
+    cachedCurrency = (data?.value as string) || "USD"
+  } catch {
+    cachedCurrency = "USD"
+  }
+  return cachedCurrency
+}
+
+export function formatMoney(amount: number, currency?: string): string {
+  const code = (currency || "USD").toUpperCase()
+  const symbol = CURRENCY_SYMBOLS[code] || code
+  return `${Number(amount).toLocaleString("en-US")} ${symbol}`
+}
+
 function escapeHtml(s: string | null | undefined): string {
   return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 }
@@ -35,19 +71,19 @@ export type TelegramEvent =
   | { type: "low_stock"; product: string; stock: number }
   | { type: "user_banned"; email: string; orders: number }
 
-export function formatTelegramMessage(ev: TelegramEvent): string {
+export function formatTelegramMessage(ev: TelegramEvent, currency?: string): string {
   switch (ev.type) {
     case "new_order": {
       const items = (ev.items || [])
         .map((i) => `${escapeHtml(i?.product_name || i?.name_ar || i?.name_en || i?.product_id)}${i?.size ? ` (${escapeHtml(i.size)})` : ""} ×${i?.quantity ?? 1}`)
         .join("، ")
-      const total = typeof ev.total === "number" ? ev.total.toLocaleString("en-US") : ""
+      const total = typeof ev.total === "number" ? formatMoney(ev.total, currency) : ""
       const lines = [
         "🛒 <b>طلب جديد!</b>",
         `🆔 #${ev.id}`,
         ev.full_name ? `👤 ${escapeHtml(ev.full_name)}` : null,
         ev.phone ? `📞 ${escapeHtml(ev.phone)}` : null,
-        total ? `💰 <b>${total} ل.س</b>` : null,
+        total ? `💰 <b>${total}</b>` : null,
         ev.shipping_country ? `🌍 ${escapeHtml(ev.shipping_country)}${ev.shipping_zone ? " / " + escapeHtml(ev.shipping_zone) : ""}` : null,
         ev.city ? `🏙 ${escapeHtml(ev.city)}` : null,
         ev.address ? `📍 ${escapeHtml(ev.address)}` : null,
@@ -93,5 +129,6 @@ export async function sendTelegram(message: string): Promise<void> {
 }
 
 export async function notifyAdmin(ev: TelegramEvent): Promise<void> {
-  await sendTelegram(formatTelegramMessage(ev))
+  const currency = await getCurrencyCode()
+  await sendTelegram(formatTelegramMessage(ev, currency))
 }

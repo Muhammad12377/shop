@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { formatMoney } from "@/lib/telegram"
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID
+
+let cachedCurrency: string | null = null
+
+async function getCurrency(): Promise<string> {
+  if (cachedCurrency) return cachedCurrency
+  try {
+    const supabase = createAdminClient()
+    const { data } = await supabase.from("settings").select("value").eq("key", "currency").maybeSingle()
+    cachedCurrency = (data?.value as string) || "USD"
+  } catch {
+    cachedCurrency = "USD"
+  }
+  return cachedCurrency
+}
 
 const STATUS_AR: Record<string, string> = {
   pending: "قيد الانتظار",
@@ -40,6 +55,7 @@ const HELP = `<b>أوامر البوت</b>
 
 async function cmdPending(): Promise<string> {
   const supabase = createAdminClient()
+  const currency = await getCurrency()
   const { data, error } = await supabase
     .from("orders")
     .select("id, total, full_name, created_at, items")
@@ -52,13 +68,13 @@ async function cmdPending(): Promise<string> {
   const total = (data || []).reduce((a, o) => a + Number(o.total), 0)
   const lines = [
     `📋 <b>الطلبات المعلقة: ${count}</b>`,
-    `💰 إجمالي القيمة: ${total.toLocaleString("en-US")} ل.س`,
+    `💰 إجمالي القيمة: ${formatMoney(total, currency)}`,
     "",
   ]
   for (const o of data || []) {
     const items = (o.items || []).length
     lines.push(
-      `🆔 <a href="https://shop-two-steel.vercel.app/en/admin/orders">#${o.id.slice(0, 8)}</a> - ${escapeHtml(o.full_name)} - ${Number(o.total).toLocaleString("en-US")} ل.س - ${items} منتج - ${new Date(o.created_at).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}`
+      `🆔 <a href="https://shop-two-steel.vercel.app/en/admin/orders">#${o.id.slice(0, 8)}</a> - ${escapeHtml(o.full_name)} - ${formatMoney(o.total, currency)} - ${items} منتج - ${new Date(o.created_at).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}`
     )
   }
   return lines.join("\n")
@@ -85,6 +101,7 @@ async function cmdStock(): Promise<string> {
 
 async function cmdStats(): Promise<string> {
   const supabase = createAdminClient()
+  const currency = await getCurrency()
   const { data: orders, error } = await supabase.from("orders").select("id, status, total, created_at")
   if (error) return `خطأ في جلب الإحصائيات: ${escapeHtml(error.message)}`
   const list = orders || []
@@ -103,7 +120,7 @@ async function cmdStats(): Promise<string> {
     `معلقة: ${countBy("pending")} | مؤكدة: ${countBy("confirmed")}`,
     `تم الشحن: ${countBy("shipped")} | تم التسليم: ${countBy("delivered")}`,
     `ملغية: ${countBy("cancelled")} | كاذبة: ${countBy("fake")}`,
-    `💰 الإيرادات (مؤكد+شحن+تسليم): ${revenue.toLocaleString("en-US")} ل.س`,
+    `💰 الإيرادات (مؤكد+شحن+تسليم): ${formatMoney(revenue, currency)}`,
   ].join("\n")
 }
 
