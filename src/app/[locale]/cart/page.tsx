@@ -136,7 +136,7 @@ export default function CartPage() {
                       <p className="text-xs sm:text-sm text-zinc-500 truncate">
                         {item.size && item.size}
                         {item.size && item.color ? " / " : ""}
-                        {item.color && colorLabel(item.color)}
+                        {item.color && colorLabel(item.color, isRtl ? "ar" : "en")}
                       </p>
                     </div>
                     <button

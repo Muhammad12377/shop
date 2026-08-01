@@ -212,7 +212,7 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                         {order.items.map((item: any) => (
                           <div key={item.id} className="flex items-center justify-between text-sm py-1">
                             <span>
-                              {item.product_name} {item.size && `- ${item.size}`} {item.color && `- ${colorLabel(item.color)}`}
+                              {item.product_name} {item.size && `- ${item.size}`} {item.color && `- ${colorLabel(item.color, isRtl ? "ar" : "en")}`}
                               <span className="text-zinc-400"> x{item.quantity}</span>
                             </span>
                             <span>${(item.price * item.quantity).toFixed(2)}</span>

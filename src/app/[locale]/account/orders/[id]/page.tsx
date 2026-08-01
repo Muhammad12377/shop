@@ -209,7 +209,7 @@ export default function OrderDetailPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.product_name}</p>
                 <p className="text-xs text-zinc-400">
-                  {item.size && `${item.size} / `}{item.color && `${colorLabel(item.color)} / `}x{item.quantity}
+                  {item.size && `${item.size} / `}{item.color && `${colorLabel(item.color, isRtl ? "ar" : "en")} / `}x{item.quantity}
                 </p>
               </div>
               <p className="text-sm font-medium">${(item.price * item.quantity).toFixed(2)}</p>

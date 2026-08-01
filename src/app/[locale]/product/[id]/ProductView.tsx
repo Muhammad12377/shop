@@ -296,7 +296,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
                     key={color}
                     className="w-8 h-8 rounded-full border-2 border-accent scale-110"
                     style={{ background: colorBackground(color) }}
-                    title={colorLabel(color)}
+                    title={colorLabel(color, isRtl ? "ar" : "en")}
                   />
                 ))}
                 {(siblings || []).length > 0 && (

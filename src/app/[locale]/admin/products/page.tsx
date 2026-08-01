@@ -627,7 +627,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   {(form.colors || []).map((c) => (
                     <span key={c} className="inline-flex items-center gap-1.5 px-2 py-1 bg-zinc-100 rounded-md text-xs">
                       <span className="w-4 h-4 rounded-full inline-block border border-zinc-200" style={{ background: colorBackground(c) }} />
-                      {colorLabel(c)}
+                      {colorLabel(c, isRtl ? "ar" : "en")}
                       <button onClick={removeColor} className="cursor-pointer"><X className="w-3 h-3" /></button>
                     </span>
                   ))}

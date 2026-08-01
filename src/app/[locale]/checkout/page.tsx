@@ -252,7 +252,7 @@ export default function CheckoutPage() {
   return (
     <>
       <Header />
-      <div className="max-w-4xl mx-auto px-4 py-8 pb-32 md:pb-8">
+      <div className="max-w-4xl mx-auto w-full min-w-0 px-4 py-8 pb-32 md:pb-8">
         <h1 className="text-xl sm:text-2xl font-bold mb-6">{t("title")}</h1>
 
         <div className="md:hidden mb-4">
@@ -285,7 +285,7 @@ export default function CheckoutPage() {
                           {isRtl ? item.name_ar : item.name_en}
                         </p>
                         <p className="text-xs text-zinc-400">
-                          {item.size} / {colorLabel(item.color)} x{item.quantity}
+                          {item.size} / {colorLabel(item.color, isRtl ? "ar" : "en")} x{item.quantity}
                         </p>
                       </div>
                       <p className="text-sm font-medium shrink-0">
@@ -364,7 +364,7 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">{t("phone")}</label>
-                  <div className="grid grid-cols-[110px_1fr] gap-2">
+                  <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2">
                     <select
                       value={phoneCode}
                       onChange={(e) => setPhoneCode(e.target.value)}
@@ -459,7 +459,7 @@ export default function CheckoutPage() {
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value)}
                   placeholder={isRtl ? "أدخل كود الخصم" : "Enter coupon code"}
-                  className="flex-1 px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                  className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
                   disabled={!!appliedCoupon}
                 />
                 {appliedCoupon ? (
@@ -513,7 +513,7 @@ export default function CheckoutPage() {
                         {isRtl ? item.name_ar : item.name_en}
                       </p>
                       <p className="text-xs text-zinc-400">
-                        {item.size} / {colorLabel(item.color)} x{item.quantity}
+                        {item.size} / {colorLabel(item.color, isRtl ? "ar" : "en")} x{item.quantity}
                       </p>
                       <p className="text-sm font-medium">
                         ${(item.price * item.quantity).toFixed(2)}
