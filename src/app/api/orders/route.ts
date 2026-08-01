@@ -46,132 +46,33 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  if (!body.items || !body.items.length || !body.full_name || !body.phone || !body.address || !body.city) {
-    return NextResponse.json({ success: false, error: "Missing required fields: items, full_name, phone, address, city" } satisfies ApiResponse, { status: 400 })
+  if (!Array.isArray(body?.items) || body.items.length === 0) {
+    return NextResponse.json({ success: false, error: "Missing required fields: items" } satisfies ApiResponse, { status: 400 })
   }
 
-  const { data: settings } = await auth.supabase.from("settings").select("key, value")
-  const settingsMap: Record<string, string> = {}
-  for (const s of settings || []) settingsMap[s.key] = s.value
-  const shipping_fee = Number(settingsMap.shipping_fee) || 0
-  const free_shipping_min = Number(settingsMap.free_shipping_min) || 0
+  const sanitizedItems = body.items.map((i: any) => ({
+    product_id: i.product_id,
+    size: i.size ?? null,
+    color: i.color ?? null,
+    quantity: Number(i.quantity),
+  }))
 
-  const productIds = [...new Set(body.items.map((i: any) => i.product_id))]
-  const { data: stockRows } = await auth.supabase
-    .from("products")
-    .select("id, stock, size_stock, price, name_en, name_ar")
-    .in("id", productIds)
-  const stockMap: Record<string, any> = {}
-  for (const p of stockRows || []) stockMap[p.id] = p
-
-  let subtotal = 0
-  for (const item of body.items) {
-    const product = stockMap[item.product_id]
-    if (!product) {
-      return NextResponse.json({ success: false, error: "A product in your cart is no longer available" } satisfies ApiResponse, { status: 400 })
-    }
-    const sizeStock = Number(product.size_stock?.[item.size] ?? product.stock)
-    if (Number(item.quantity) > sizeStock) {
-      return NextResponse.json(
-        { success: false, error: `Only ${sizeStock} in stock for "${product.name_en}" size ${item.size || "-"}` } satisfies ApiResponse,
-        { status: 400 }
-      )
-    }
-    subtotal += Number(product.price) * Number(item.quantity)
-  }
-
-  let shipping_country: string | null = null
-  let shipping_zone: string | null = null
-  let zone_price: number | null = null
-  let country_price: number | null = null
-
-  if (body.country_id) {
-    const { data: country } = await auth.supabase
-      .from("shipping_countries")
-      .select("price, name_en, name_ar")
-      .eq("id", body.country_id)
-      .eq("active", true)
-      .single()
-    if (country) {
-      country_price = Number(country.price)
-      shipping_country = country.name_en
-    }
-    if (body.zone_id) {
-      const { data: zone } = await auth.supabase
-        .from("shipping_zones")
-        .select("price, name_en, name_ar")
-        .eq("id", body.zone_id)
-        .eq("active", true)
-        .single()
-      if (zone) {
-        zone_price = Number(zone.price)
-        shipping_zone = zone.name_en
-      }
-    }
-  }
-
-  let discount = 0
-  let coupon_code: string | null = null
-
-  if (body.coupon_code) {
-    const { data: coupon } = await auth.supabase
-      .from("coupons")
-      .select("*")
-      .eq("code", body.coupon_code.toUpperCase())
-      .single()
-
-    if (coupon && coupon.active && (!coupon.expires_at || new Date(coupon.expires_at) > new Date()) && (!coupon.max_uses || coupon.used_count < coupon.max_uses) && subtotal >= coupon.min_order) {
-      coupon_code = coupon.code
-      if (coupon.discount_type === "percentage") {
-        discount = (subtotal * Number(coupon.discount_value)) / 100
-      } else {
-        discount = Number(coupon.discount_value)
-      }
-
-      await auth.supabase
-        .from("coupons")
-        .update({ used_count: coupon.used_count + 1 })
-        .eq("id", coupon.id)
-    }
-  }
-
-  const baseFee = zone_price ?? country_price ?? shipping_fee
-  const effective_shipping = subtotal >= free_shipping_min ? 0 : baseFee
-  const total = Math.max(0, subtotal - discount) + effective_shipping
-
-  const { data: order, error } = await auth.supabase
-    .from("orders")
-    .insert({
-      user_id: auth.user.id,
-      status: "pending",
-      subtotal,
-      shipping_fee: effective_shipping,
-      discount,
-      coupon_code,
-      total,
-      full_name: body.full_name,
-      phone: body.phone,
-      address: body.address,
-      city: body.city,
-      shipping_country,
-      shipping_zone,
-      country_id: body.country_id || null,
-      zone_id: body.zone_id || null,
-      notes: body.notes || null,
-      items: body.items,
-    })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ success: false, error: error.message } satisfies ApiResponse, { status: 500 })
-
-  await auth.supabase.from("order_status_history").insert({
-    order_id: order.id,
-    status: "pending",
-    created_by: auth.user.id,
+  const { data: order, error } = await auth.supabase.rpc("create_order", {
+    p_full_name: String(body.full_name ?? ""),
+    p_phone: String(body.phone ?? ""),
+    p_address: String(body.address ?? ""),
+    p_city: String(body.city ?? ""),
+    p_items: sanitizedItems,
+    p_coupon_code: body.coupon_code ? String(body.coupon_code) : null,
+    p_country_id: body.country_id || null,
+    p_zone_id: body.zone_id || null,
+    p_notes: body.notes ? String(body.notes) : null,
   })
 
-  await auth.supabase.from("cart_items").delete().eq("user_id", auth.user.id)
+  if (error) {
+    const status = /blocked|Unauthorized|Forbidden|not found|stock|available|Invalid quantity|Missing required/i.test(error.message) ? 400 : 500
+    return NextResponse.json({ success: false, error: error.message } satisfies ApiResponse, { status })
+  }
 
   await notifyAdmin({
     type: "new_order",

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation"
 import { routing } from "@/lib/i18n/routing"
 import { Toaster } from "react-hot-toast"
 import BlockedWatcher from "@/components/auth/BlockedWatcher"
+import CartSync from "@/components/cart/CartSync"
 import "../globals.css"
 
 const geist = Geist({
@@ -47,6 +48,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body className="min-h-screen flex flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <BlockedWatcher />
+          <CartSync />
           {children}
           <Toaster
             position={isRtl ? "top-left" : "top-right"}

@@ -211,86 +211,41 @@ export default function CheckoutPage() {
 
       const orderItems = items.map((item) => ({
         product_id: item.product_id,
-        product_name: isRtl ? item.name_ar : item.name_en,
-        price: item.price,
         quantity: item.quantity,
         size: item.size,
         color: item.color,
-        image: item.image,
       }))
 
-      const productIds = [...new Set(orderItems.map((i) => i.product_id))]
-      const { data: stockRows } = await supabase
-        .from("products")
-        .select("id, stock, size_stock, name_en, name_ar")
-        .in("id", productIds)
-      const stockMap: Record<string, any> = {}
-      for (const p of stockRows || []) stockMap[p.id] = p
-
-      for (const item of orderItems) {
-        const product = stockMap[item.product_id]
-        if (!product) {
-          toast.error(isRtl ? "أحد المنتجات غير متوفر" : "A product is no longer available")
-          return
-        }
-        const sizeStock = Number(product.size_stock?.[item.size] ?? product.stock)
-        if (item.quantity > sizeStock) {
-          toast.error(
-            isRtl
-              ? `لا يمكن طلب أكثر من ${sizeStock} من "${product.name_ar}" مقاس ${item.size} (المتوفر: ${sizeStock})`
-              : `Cannot order more than ${sizeStock} of "${product.name_en}" size ${item.size} (in stock: ${sizeStock})`
-          )
-          return
-        }
-      }
-
-      const { data: order, error } = await supabase
-        .from("orders")
-        .insert({
-          user_id: user.id,
-          status: "pending",
-          subtotal,
-          shipping_fee: shippingFee,
-          discount,
-          coupon_code: appliedCoupon?.code || null,
-          total: grandTotal,
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: orderItems,
           full_name: form.full_name,
           phone: phoneCode + cleanPhone,
           address: form.address,
           city: form.city,
-          shipping_country: selectedCountry ? (isRtl ? selectedCountry.name_ar : selectedCountry.name_en) : null,
-          shipping_zone: selectedZone ? (isRtl ? selectedZone.name_ar : selectedZone.name_en) : null,
+          notes: form.notes,
+          coupon_code: appliedCoupon?.code || null,
           country_id: selectedCountryId || null,
           zone_id: selectedZoneId || null,
-          notes: form.notes,
-          items: orderItems,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      if (appliedCoupon) {
-        await supabase
-          .from("coupons")
-          .update({ used_count: (appliedCoupon.used_count || 0) + 1 })
-          .eq("id", appliedCoupon.id)
-      }
-
-      await supabase.from("order_status_history").insert({
-        order_id: order.id,
-        status: "pending",
-        note: "Order placed",
+        }),
       })
+      const result = await res.json()
+
+      if (!result.success) {
+        toast.error(result.error || (isRtl ? "حدث خطأ أثناء إتمام الطلب" : "Failed to place the order"))
+        return
+      }
 
       clearCart()
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "new_order", order_id: order.id }),
+        body: JSON.stringify({ type: "new_order", order_id: result.data.id }),
       }).catch(() => {})
       toast.success(t("order_confirmed"))
-      router.push(`/order-confirmed?id=${order.id}`)
+      router.push(`/order-confirmed?id=${result.data.id}`)
     } catch (err: any) {
       toast.error(err.message)
     } finally {

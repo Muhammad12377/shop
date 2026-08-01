@@ -11,18 +11,33 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const body = await req.json()
-    if (body.role === "user" && id === user.id) {
-      return NextResponse.json({ error: "You cannot remove your own admin role" }, { status: 400 })
+
+    if (body.role !== undefined && body.role !== "admin" && body.role !== "user") {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 })
     }
-    const { data, error } = await supabase
-      .from("profiles")
-      .update(body)
-      .eq("id", id)
-      .select()
-      .single()
+    if (body.blocked !== undefined && typeof body.blocked !== "boolean") {
+      return NextResponse.json({ error: "Invalid blocked value" }, { status: 400 })
+    }
+    if (body.role === undefined && body.blocked === undefined) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
+    }
+
+    const { data, error } = await supabase.rpc("admin_set_profile_privileges", {
+      target_user: id,
+      new_role: body.role ?? null,
+      new_blocked: body.blocked ?? null,
+    })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data)
+
+    const { data: updated, error: fetchError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", id)
+      .single()
+
+    if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+    return NextResponse.json(updated)
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }

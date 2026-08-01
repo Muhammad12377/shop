@@ -9,48 +9,85 @@ type CartStore = {
   updateQuantity: (id: string, quantity: number) => void
   clearCart: () => void
   total: () => number
+  hydrate: () => Promise<void>
+}
+
+function toServerItem(i: CartItem) {
+  return {
+    product_id: i.product_id,
+    size: i.size,
+    color: i.color,
+    quantity: i.quantity,
+  }
 }
 
 export const useCartStore = create<CartStore>()(
   persist(
-    (set, get) => ({
-      items: [],
-      addItem: (item) => {
+    (set, get) => {
+      const sync = () => {
         const items = get().items
-        const existing = items.find(
-          (i) => i.product_id === item.product_id && i.size === item.size && i.color === item.color
-        )
-        const maxQty = item.stock ?? Infinity
-        if (existing) {
-          const quantity = Math.min(existing.quantity + item.quantity, maxQty)
+        if (items.length === 0) return
+        fetch("/api/cart", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: items.map(toServerItem) }),
+        }).catch(() => {})
+      }
+
+      return {
+        items: [],
+        addItem: (item) => {
+          const items = get().items
+          const existing = items.find(
+            (i) => i.product_id === item.product_id && i.size === item.size && i.color === item.color
+          )
+          const maxQty = item.stock ?? Infinity
+          if (existing) {
+            const quantity = Math.min(existing.quantity + item.quantity, maxQty)
+            set({
+              items: items.map((i) =>
+                i.product_id === item.product_id && i.size === item.size && i.color === item.color
+                  ? { ...i, quantity, stock: maxQty === Infinity ? i.stock : item.stock }
+                  : i
+              ),
+            })
+          } else {
+            set({ items: [...items, { ...item, quantity: Math.min(item.quantity, maxQty) }] })
+          }
+          sync()
+        },
+        removeItem: (id) => {
+          set({ items: get().items.filter((i) => i.id !== id) })
+          sync()
+        },
+        updateQuantity: (id, quantity) => {
+          if (quantity <= 0) {
+            get().removeItem(id)
+            return
+          }
           set({
-            items: items.map((i) =>
-              i.product_id === item.product_id && i.size === item.size && i.color === item.color
-                ? { ...i, quantity, stock: maxQty === Infinity ? i.stock : item.stock }
-                : i
+            items: get().items.map((i) =>
+              i.id === id ? { ...i, quantity: Math.min(quantity, i.stock ?? Infinity) } : i
             ),
           })
-        } else {
-          set({ items: [...items, { ...item, quantity: Math.min(item.quantity, maxQty) }] })
-        }
-      },
-      removeItem: (id) => {
-        set({ items: get().items.filter((i) => i.id !== id) })
-      },
-      updateQuantity: (id, quantity) => {
-        if (quantity <= 0) {
-          get().removeItem(id)
-          return
-        }
-        set({
-          items: get().items.map((i) =>
-            i.id === id ? { ...i, quantity: Math.min(quantity, i.stock ?? Infinity) } : i
-          ),
-        })
-      },
-      clearCart: () => set({ items: [] }),
-      total: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
-    }),
+          sync()
+        },
+        clearCart: () => set({ items: [] }),
+        total: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+        hydrate: async () => {
+          try {
+            const res = await fetch("/api/cart")
+            if (!res.ok) return
+            const result = await res.json()
+            if (result.success && Array.isArray(result.data)) {
+              set({ items: result.data })
+            }
+          } catch {
+            // offline or unauthenticated — keep local cart
+          }
+        },
+      }
+    },
     { name: "cart-storage" }
   )
 )

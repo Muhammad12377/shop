@@ -14,7 +14,7 @@ export async function GET() {
   if (!auth) return NextResponse.json({ success: false, error: "Unauthorized" } satisfies ApiResponse, { status: 401 })
 
   const { data, error } = await auth.supabase
-    .from("wishlist_items")
+    .from("wishlist")
     .select("*, product:products(*)")
     .eq("user_id", auth.user.id)
     .order("created_at", { ascending: false })
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await auth.supabase
-    .from("wishlist_items")
+    .from("wishlist")
     .insert({ user_id: auth.user.id, product_id: body.product_id })
     .select("*, product:products(*)")
     .single()
@@ -54,7 +54,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { error } = await auth.supabase
-    .from("wishlist_items")
+    .from("wishlist")
     .delete()
     .eq("user_id", auth.user.id)
     .eq("product_id", body.product_id)

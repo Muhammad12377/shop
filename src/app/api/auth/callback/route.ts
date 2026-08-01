@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
 
+function isSafeLocalPath(value: string, origin: string) {
+  if (!value.startsWith("/") || value.startsWith("//")) return false
+  try {
+    const resolved = new URL(value, origin)
+    return resolved.origin === origin && !resolved.href.includes("\\")
+  } catch {
+    return false
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
   const next = searchParams.get("next") ?? "/"
 
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/"
+  const safeNext = isSafeLocalPath(next, origin) ? next : "/"
 
   if (code) {
     const supabase = await createServerSupabase()
