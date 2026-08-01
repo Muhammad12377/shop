@@ -84,8 +84,20 @@ export default function ProfilePage() {
       toast.error("Passwords do not match")
       return
     }
-    if (passwordForm.new_password.length < 6) {
-      toast.error("Password must be at least 6 characters")
+    if (/\s/.test(passwordForm.new_password)) {
+      toast.error("Password must not contain spaces")
+      return
+    }
+    if (passwordForm.new_password.length < 8) {
+      toast.error("Password must be at least 8 characters")
+      return
+    }
+    if (!/[A-Za-z]/.test(passwordForm.new_password)) {
+      toast.error("Password must contain at least one letter")
+      return
+    }
+    if (!/\d/.test(passwordForm.new_password)) {
+      toast.error("Password must contain at least one number")
       return
     }
     setChangingPassword(true)

@@ -81,6 +81,21 @@ export default function AuthPage() {
         ? `أعد المحاولة بعد ${match[1]} ثانية`
         : `Try again in ${match[1]} seconds`
     }
+    if (code === "captcha_failed" || m === "captcha_failed") {
+      return isRtl ? "فشل التحقق الأمني، حاول مجددًا" : "Security check failed, try again"
+    }
+    if (code === "password_space") {
+      return isRtl ? "كلمة المرور لا يجب أن تحتوي على مسافات" : "Password must not contain spaces"
+    }
+    if (code === "password_too_short") {
+      return isRtl ? "كلمة المرور يجب أن تكون 8 أحرف على الأقل" : "Password must be at least 8 characters"
+    }
+    if (code === "password_letters") {
+      return isRtl ? "يجب أن تحتوي كلمة المرور على حرف إنجليزي واحد على الأقل" : "Password must contain at least one letter"
+    }
+    if (code === "password_numbers") {
+      return isRtl ? "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل" : "Password must contain at least one number"
+    }
     if (code === "over_email_send_rate_limit" || /rate limit exceeded/i.test(m)) {
       return isRtl
         ? "وصلت إلى الحد الأقصى لإرسال الرموز. حاول مجددًا بعد مرور ساعة تقريبًا."
@@ -94,6 +109,22 @@ export default function AuthPage() {
     return m
   }
 
+  const passwordIssue = (pw: string): string | null => {
+    if (/\s/.test(pw)) {
+      return isRtl ? "كلمة المرور لا يجب أن تحتوي على مسافات" : "Password must not contain spaces"
+    }
+    if (pw.length < 8) {
+      return isRtl ? "كلمة المرور يجب أن تكون 8 أحرف على الأقل" : "Password must be at least 8 characters"
+    }
+    if (!/[A-Za-z]/.test(pw)) {
+      return isRtl ? "يجب أن تحتوي كلمة المرور على حرف إنجليزي واحد على الأقل" : "Password must contain at least one letter"
+    }
+    if (!/\d/.test(pw)) {
+      return isRtl ? "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل" : "Password must contain at least one number"
+    }
+    return null
+  }
+
   const gotoOtpScreen = (target: string, origin: OtpOrigin, seconds: number) => {
     setOtpEmail(target)
     setOtpCode("")
@@ -103,31 +134,41 @@ export default function AuthPage() {
   }
 
   const sendOtp = async (target: string, origin: OtpOrigin) => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email: target,
-      options: { shouldCreateUser: false },
+    const res = await fetch("/api/auth/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: target,
+        mode: origin,
+        name: origin === "register" ? name : undefined,
+        captchaToken,
+      }),
     })
-    if (error) throw error
+    const data = await res.json()
+    if (!data.ok) {
+      const err = new Error(data.error || "Failed to send code")
+      ;(err as any).code = data.code
+      throw err
+    }
     gotoOtpScreen(target, origin, 60)
   }
 
   const sendRegisterOtp = async (target: string, fullName: string) => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email: target,
-      options: {
-        shouldCreateUser: true,
-        data: { full_name: fullName },
-      },
+    const res = await fetch("/api/auth/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: target, mode: "register", name: fullName, captchaToken }),
     })
-    if (error) {
-      if (isCooldownError(error)) {
+    const data = await res.json()
+    if (!data.ok) {
+      const err = new Error(data.error || "Failed to send code")
+      ;(err as any).code = data.code
+      if (isCooldownError(err)) {
         if (!otpSentAt) setOtpSentAt(new Date(Date.now() - 70000).toISOString())
-        gotoOtpScreen(target, "register", cooldownSeconds(error))
+        gotoOtpScreen(target, "register", cooldownSeconds(err))
         return
       }
-      throw error
+      throw err
     }
     setOtpSentAt(new Date(Date.now() - 5000).toISOString())
     gotoOtpScreen(target, "register", 60)
@@ -148,26 +189,38 @@ export default function AuthPage() {
       toast.error(isRtl ? "أدخل الرمز المكوّن من 8 أرقام" : "Enter the 8-digit code")
       return
     }
+    if (!captchaToken) {
+      toast.error(isRtl ? "أكمل التحقق الأمني أولاً" : "Complete the security check first")
+      return
+    }
     setVerifying(true)
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: otpEmail,
-        token: otpCode.trim(),
-        type: "email",
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: otpEmail,
+          code: otpCode.trim(),
+          origin: otpOrigin,
+          name: otpOrigin === "register" ? name : undefined,
+          password: otpOrigin === "register" ? password : undefined,
+          otpSentAt: otpOrigin === "register" ? otpSentAt : undefined,
+          captchaToken,
+        }),
       })
-      if (error) throw error
+      const data = await res.json()
+      if (!data.ok) {
+        const err = new Error(data.error || "Verification failed")
+        ;(err as any).code = data.code
+        throw err
+      }
       if (otpOrigin === "forgot") {
         setMode("newpassword")
+        setCaptchaToken(null)
+        setCaptchaResetKey((k) => k + 1)
         toast.success(isRtl ? "تم التحقق! أدخل كلمة مرور جديدة" : "Verified! Enter a new password")
       } else {
-        const createdInThisFlow =
-          data?.user?.created_at &&
-          otpSentAt &&
-          new Date(data.user.created_at).getTime() >= new Date(otpSentAt).getTime()
-        if (createdInThisFlow) {
-          if (password) await supabase.auth.updateUser({ password })
-          if (name) await supabase.auth.updateUser({ data: { full_name: name } })
+        if (data.created) {
           fetch("/api/notify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -179,7 +232,7 @@ export default function AuthPage() {
         router.refresh()
       }
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(friendlyError(err))
     } finally {
       setVerifying(false)
     }
@@ -187,24 +240,33 @@ export default function AuthPage() {
 
   const handleSubmitNewPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (newPassword.length < 6) {
-      toast.error(isRtl ? "كلمة المرور يجب أن تكون 6 أحرف على الأقل" : "Password must be at least 6 characters")
+    const issue = passwordIssue(newPassword)
+    if (issue) {
+      toast.error(issue)
       return
     }
     if (newPassword !== confirmPassword) {
       toast.error(isRtl ? "كلمتا المرور غير متطابقتين" : "Passwords do not match")
       return
     }
+    if (!captchaToken) {
+      toast.error(isRtl ? "أكمل التحقق الأمني أولاً" : "Complete the security check first")
+      return
+    }
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
+      const res = await fetch("/api/auth/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword, confirmPassword, captchaToken }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error || "Failed to update password")
       toast.success(isRtl ? "تم تغيير كلمة المرور بنجاح" : "Password changed successfully")
       router.push("/")
       router.refresh()
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(friendlyError(err))
     } finally {
       setLoading(false)
     }
@@ -214,6 +276,10 @@ export default function AuthPage() {
     e.preventDefault()
     if (!email.trim()) {
       toast.error(isRtl ? "أدخل بريدك الإلكتروني" : "Enter your email")
+      return
+    }
+    if (!captchaToken) {
+      toast.error(isRtl ? "أكمل التحقق الأمني أولاً" : "Complete the security check first")
       return
     }
     setLoading(true)
@@ -256,7 +322,6 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    const supabase = createClient()
 
     try {
       if (TURNSTILE_SITE_KEY) {
@@ -264,39 +329,36 @@ export default function AuthPage() {
           toast.error(isRtl ? "أكمل التحقق الأمني أولاً" : "Complete the security check first")
           return
         }
-        const res = await fetch("/api/auth/captcha-verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: captchaToken }),
-        })
-        const captchaResult = await res.json()
-        if (!captchaResult?.success) {
-          const code = captchaResult?.error ? ` (${captchaResult.error})` : ""
-          toast.error(
-            isRtl ? `فشل التحقق الأمني، حاول مجددًا${code}` : `Security check failed, try again${code}`
-          )
-          setCaptchaToken(null)
-          setCaptchaResetKey((k) => k + 1)
-          return
-        }
       }
       if (mode === "register") {
-        await sendRegisterOtp(email, name)
+        const issue = passwordIssue(password)
+        if (issue) {
+          toast.error(issue)
+          return
+        }
+        if (password !== confirmPassword) {
+          toast.error(isRtl ? "كلمتا المرور غير متطابقتين" : "Passwords do not match")
+          return
+        }
+        await sendRegisterOtp(email.trim(), name)
         toast.success(
           isRtl ? "تم إنشاء الحساب! أدخل رمز التحقق المرسل إلى بريدك" : "Account created! Enter the code sent to your email"
         )
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("blocked")
-          .eq("id", (await supabase.auth.getUser()).data.user!.id)
-          .single()
-        if (profile?.blocked) {
-          await supabase.auth.signOut()
-          toast.error(isRtl ? "تم حظر حسابك" : "Your account has been blocked")
-          return
+        const res = await fetch("/api/auth/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password, captchaToken }),
+        })
+        const data = await res.json()
+        if (!data.ok) {
+          if (data.blocked) {
+            toast.error(isRtl ? "تم حظر حسابك" : "Your account has been blocked")
+            return
+          }
+          const err = new Error(data.error || "Sign in failed")
+          ;(err as any).code = data.code
+          throw err
         }
         toast.success("Welcome back!")
         router.push("/")
@@ -373,6 +435,8 @@ export default function AuthPage() {
                   className="w-full text-center text-2xl font-bold tracking-[0.5em] pl-9 pr-9 py-3 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent"
                 />
 
+                <Turnstile onToken={setCaptchaToken} resetKey={captchaResetKey} className="w-full [&>iframe]:w-full" />
+
                 <button
                   type="submit"
                   disabled={verifying || otpCode.length !== 8}
@@ -426,6 +490,7 @@ export default function AuthPage() {
                     />
                   </div>
                 </div>
+                <Turnstile onToken={setCaptchaToken} resetKey={captchaResetKey} className="w-full [&>iframe]:w-full" />
                 <button
                   type="submit"
                   disabled={loading}
@@ -462,7 +527,7 @@ export default function AuthPage() {
                       onChange={(e) => setNewPassword(e.target.value)}
                       className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
                       required
-                      minLength={6}
+                      minLength={8}
                     />
                     <button
                       type="button"
@@ -472,6 +537,11 @@ export default function AuthPage() {
                       {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  <p className="mt-1.5 text-xs text-zinc-400">
+                    {isRtl
+                      ? "8 أحرف على الأقل، بلا مسافات، وتحتوي على حرف إنجليزي ورقم"
+                      : "At least 8 chars, no spaces, with a letter and a number"}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1.5">
@@ -485,10 +555,11 @@ export default function AuthPage() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
                       required
-                      minLength={6}
+                      minLength={8}
                     />
                   </div>
                 </div>
+                <Turnstile onToken={setCaptchaToken} resetKey={captchaResetKey} className="w-full [&>iframe]:w-full" />
                 <button
                   type="submit"
                   disabled={loading}
@@ -566,7 +637,7 @@ export default function AuthPage() {
                           onChange={(e) => setPassword(e.target.value)}
                           className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
                           required
-                          minLength={6}
+                          minLength={8}
                         />
                         <button
                           type="button"
@@ -575,6 +646,32 @@ export default function AuthPage() {
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
+                      </div>
+                      {mode === "register" && (
+                        <p className="mt-1.5 text-xs text-zinc-400">
+                          {isRtl
+                            ? "8 أحرف على الأقل، بلا مسافات، وتحتوي على حرف إنجليزي ورقم"
+                            : "At least 8 chars, no spaces, with a letter and a number"}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {mode === "register" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">
+                        {isRtl ? "تأكيد كلمة المرور" : "Confirm password"}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+                          required
+                          minLength={8}
+                        />
                       </div>
                     </div>
                   )}
