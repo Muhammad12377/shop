@@ -138,6 +138,33 @@ body {
   }
 }
 
+@keyframes cart-bump {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.4) rotate(-12deg);
+  }
+  60% {
+    transform: scale(0.85) rotate(8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes added-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Reveal-on-scroll base state */
 .reveal {
   opacity: 0;
@@ -170,6 +197,14 @@ body {
 
 .animate-wiggle {
   animation: wiggle 1.2s ease-in-out infinite;
+}
+
+.animate-cart-bump {
+  animation: cart-bump 0.6s ease-in-out;
+}
+
+.animate-added-pop {
+  animation: added-pop 0.4s ease-out;
 }
 
 .animate-marquee {
@@ -232,6 +267,8 @@ body {
   .animate-pulse-soft,
   .animate-spin-slow,
   .animate-wiggle,
+  .animate-cart-bump,
+  .animate-added-pop,
   .animate-marquee {
     animation: none !important;
   }

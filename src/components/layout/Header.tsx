@@ -1,12 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { ShoppingCart, Menu, X, Search, User, Package, Heart, ChevronDown, LogOut, LayoutDashboard, Home, Globe, HelpCircle } from "lucide-react"
 import { Link, usePathname, useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
-import { useEffect } from "react"
 
 export default function Header() {
   const t = useTranslations("nav")
@@ -19,6 +18,18 @@ export default function Header() {
   const [profile, setProfile] = useState<any>(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const cartCount = useCartStore((s) => s.items.reduce((a, b) => a + b.quantity, 0))
+  const prevCartCount = useRef(cartCount)
+  const [cartBump, setCartBump] = useState(false)
+
+  useEffect(() => {
+    if (cartCount > prevCartCount.current) {
+      setCartBump(true)
+      const timer = setTimeout(() => setCartBump(false), 650)
+      prevCartCount.current = cartCount
+      return () => clearTimeout(timer)
+    }
+    prevCartCount.current = cartCount
+  }, [cartCount])
 
   useEffect(() => {
     const supabase = createClient()
@@ -109,10 +120,10 @@ export default function Header() {
               </Link>
             )}
 
-            <Link href="/cart" className="relative p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <ShoppingCart className="w-5 h-5" />
+            <Link href="/cart" className="relative p-2 hover:bg-zinc-100 rounded-full transition-colors" aria-label={t("cart")}>
+              <ShoppingCart className={`w-5 h-5 ${cartBump ? "animate-cart-bump" : ""}`} />
               {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
+                <span className={`absolute -top-0.5 -right-0.5 bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium ${cartBump ? "animate-added-pop" : ""}`}>
                   {cartCount}
                 </span>
               )}
@@ -259,10 +270,10 @@ export default function Header() {
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-50 transition-colors"
             >
-              <ShoppingCart className="w-4 h-4 text-zinc-400 shrink-0" />
+              <ShoppingCart className={`w-4 h-4 text-zinc-400 shrink-0 ${cartBump ? "animate-cart-bump" : ""}`} />
               {t("cart")}
               {cartCount > 0 && (
-                <span className="bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
+                <span className={`bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium ${cartBump ? "animate-added-pop" : ""}`}>
                   {cartCount}
                 </span>
               )}

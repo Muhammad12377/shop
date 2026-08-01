@@ -38,6 +38,8 @@ export default function ProductView({ product, siblings }: { product: any; sibli
   const maxQty = selectedSize ? sizeQty(selectedSize) : product?.stock ?? 0
   const remaining = Math.max(0, maxQty - cartQty)
   const atLimit = remaining <= 0
+  const [adding, setAdding] = useState(false)
+  const [justAdded, setJustAdded] = useState(false)
   const locale = useLocale()
   const isRtl = locale === "ar"
 
@@ -82,10 +84,12 @@ export default function ProductView({ product, siblings }: { product: any; sibli
   }
 
   const handleAddToCart = async () => {
-    if (!product || atLimit) return
+    if (!product || atLimit || adding) return
+    setAdding(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      setAdding(false)
       toast.error(isRtl ? "يرجى تسجيل الدخول لإضافة المنتجات إلى السلة" : "Please login to add items to your cart")
       router.push("/auth")
       return
@@ -104,7 +108,34 @@ export default function ProductView({ product, siblings }: { product: any; sibli
       slug: product.slug,
       stock: hasPerSize ? sizeQty(selectedSize) : product.stock,
     })
-    toast.success(t("add_to_cart"))
+    setAdding(false)
+    setJustAdded(true)
+    window.setTimeout(() => setJustAdded(false), 1800)
+    toast.custom(
+      (toastEl) => (
+        <div className="flex items-center gap-3 bg-white rounded-xl shadow-lg border border-zinc-100 px-4 py-3">
+          <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <Check className="w-4 h-4 text-green-600" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-zinc-900">
+              {isRtl ? "تمت الإضافة إلى السلة" : "Added to cart"}
+            </p>
+            <p className="text-xs text-zinc-500 truncate">
+              {isRtl ? product.name_ar : product.name_en}
+            </p>
+          </div>
+          <Link
+            href="/cart"
+            onClick={() => toast.dismiss(toastEl.id)}
+            className="shrink-0 text-xs font-semibold text-accent bg-accent/10 hover:bg-accent/20 px-3 py-1.5 rounded-full transition-colors"
+          >
+            {isRtl ? "عرض السلة" : "View Cart"}
+          </Link>
+        </div>
+      ),
+      { duration: 3000 }
+    )
   }
 
   if (!product) {
@@ -335,13 +366,28 @@ export default function ProductView({ product, siblings }: { product: any; sibli
             <div className="flex items-center gap-3">
               <button
                 onClick={handleAddToCart}
-                disabled={atLimit}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-accent text-white font-medium hover:bg-accent-light transition-colors disabled:opacity-50"
+                disabled={atLimit || adding}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-full font-medium transition-all duration-300 disabled:opacity-50 ${
+                  justAdded
+                    ? "bg-green-600 text-white animate-added-pop"
+                    : "bg-accent text-white hover:bg-accent-light active:scale-[0.98]"
+                }`}
               >
-                <ShoppingCart className="w-5 h-5" />
-                {atLimit
-                  ? isRtl ? "الكمية القصوى في السلة" : "Max quantity in cart"
-                  : t("add_to_cart")}
+                {adding ? (
+                  <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : justAdded ? (
+                  <>
+                    <Check className="w-5 h-5" />
+                    {isRtl ? "تمت الإضافة ✓" : "Added ✓"}
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-5 h-5" />
+                    {atLimit
+                      ? isRtl ? "الكمية القصوى في السلة" : "Max quantity in cart"
+                      : t("add_to_cart")}
+                  </>
+                )}
               </button>
               <button
                 onClick={toggleWishlist}

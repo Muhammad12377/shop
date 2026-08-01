@@ -59,8 +59,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                 direction: isRtl ? "rtl" : "ltr",
               },
             }}
-          />
-        </NextIntlClientProvider>
+          />        </NextIntlClientProvider>
       </body>
     </html>
   )
