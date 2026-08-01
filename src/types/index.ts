@@ -16,6 +16,7 @@ export type UserProfile = {
   updated_at?: string
   is_me?: boolean
   is_main_admin?: boolean
+  provider?: "google" | "otp" | "unverified"
 }
 
 export type ProductCategory = {

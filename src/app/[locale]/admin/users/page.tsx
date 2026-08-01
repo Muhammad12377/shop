@@ -184,6 +184,19 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                             ? isRtl ? "مدير" : "Admin"
                             : isRtl ? "مستخدم" : "User"}
                         </span>
+                        {u.provider && u.provider !== "unverified" && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              u.provider === "google"
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-emerald-50 text-emerald-700"
+                            }`}
+                          >
+                            {u.provider === "google"
+                              ? isRtl ? "Google" : "Google"
+                              : isRtl ? "OTP" : "OTP"}
+                          </span>
+                        )}
                         {u.is_main_admin && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/30">
                             <Crown className="w-3 h-3" />
@@ -294,6 +307,17 @@ export default function AdminUsersPage({ params: paramsPromise }: { params: Prom
                       ? isRtl ? "مدير" : "Admin"
                       : isRtl ? "مستخدم" : "User"}
                   </span>
+                  {u.provider && u.provider !== "unverified" && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        u.provider === "google"
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {u.provider === "google" ? "Google" : "OTP"}
+                    </span>
+                  )}
                   {u.is_main_admin && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/30">
                       <Crown className="w-3 h-3" />

@@ -15,19 +15,28 @@ export async function GET() {
     const { data: authUsers, error: authError } = await admin.auth.admin.listUsers({ perPage: 1000 })
     if (authError) return NextResponse.json({ error: authError.message }, { status: 500 })
 
-    const verifiedEmails = new Set(
-      (authUsers?.users || [])
-        .filter((u) => u.email_confirmed_at)
-        .map((u) => u.email?.toLowerCase())
-        .filter(Boolean)
-    )
+    const providerByEmail = new Map<string, string>()
+    for (const u of authUsers?.users || []) {
+      if (!u.email) continue
+      const provider =
+        u.app_metadata?.provider === "google" ||
+        (Array.isArray(u.identities) && u.identities.some((i: any) => i.provider === "google"))
+          ? "google"
+          : u.email_confirmed_at
+            ? "otp"
+            : "unverified"
+      providerByEmail.set(u.email.toLowerCase(), provider)
+    }
 
     const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const users = (data || [])
-      .filter((u) => verifiedEmails.has((u.email || "").toLowerCase()))
-      .map((u) => ({ ...u, is_me: u.id === user.id, verified: true }))
+      .filter((u) => providerByEmail.get((u.email || "").toLowerCase()) !== "unverified")
+      .map((u) => {
+        const provider = providerByEmail.get((u.email || "").toLowerCase()) || "unverified"
+        return { ...u, is_me: u.id === user.id, verified: true, provider }
+      })
 
     return NextResponse.json(users)
   } catch {
