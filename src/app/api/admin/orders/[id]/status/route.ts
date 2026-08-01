@@ -104,12 +104,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
-    if (status === "cancelled" && movedOut) {
-      await applyStock(supabase, order.items, 1)
-      await applyCoupon(supabase, order.coupon_code, -1)
-    }
-
-    if (status === "fake" && movedOut) {
+    if (movedOut && !movedInto) {
       await applyStock(supabase, order.items, 1)
       await applyCoupon(supabase, order.coupon_code, -1)
     }
