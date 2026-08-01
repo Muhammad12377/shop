@@ -52,6 +52,12 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    data: { ...coupon, discount_amount: Math.min(discount_amount, Number(body.total)) },
+    data: {
+      code: coupon.code,
+      discount_type: coupon.discount_type,
+      discount_value: Number(coupon.discount_value),
+      min_order: Number(coupon.min_order),
+      discount_amount: Math.min(discount_amount, Number(body.total)),
+    },
   } satisfies ApiResponse)
 }

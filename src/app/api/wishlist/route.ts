@@ -33,13 +33,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Missing product_id" } satisfies ApiResponse, { status: 400 })
   }
 
+  const { data: existing } = await auth.supabase
+    .from("wishlist")
+    .select("*, product:products(*)")
+    .eq("user_id", auth.user.id)
+    .eq("product_id", body.product_id)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ success: true, data: existing } satisfies ApiResponse)
+  }
+
   const { data, error } = await auth.supabase
     .from("wishlist")
     .insert({ user_id: auth.user.id, product_id: body.product_id })
     .select("*, product:products(*)")
     .single()
 
-  if (error) return NextResponse.json({ success: false, error: error.message } satisfies ApiResponse, { status: 500 })
+  if (error) {
+    const code = (error as any)?.code
+    if (code === "23505") {
+      const { data: re } = await auth.supabase
+        .from("wishlist")
+        .select("*, product:products(*)")
+        .eq("user_id", auth.user.id)
+        .eq("product_id", body.product_id)
+        .maybeSingle()
+      if (re) return NextResponse.json({ success: true, data: re } satisfies ApiResponse)
+    }
+    return NextResponse.json({ success: false, error: "Failed to add to wishlist" } satisfies ApiResponse, { status: 500 })
+  }
   return NextResponse.json({ success: true, data } satisfies ApiResponse)
 }
 

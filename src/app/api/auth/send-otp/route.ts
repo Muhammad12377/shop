@@ -27,10 +27,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "Name is required" }, { status: 400 })
       }
       const supabaseCheck = await createServerSupabase()
+      const escaped = name.replace(/[\\%_]/g, (m: string) => `\\${m}`)
       const { data: duplicate } = await supabaseCheck
         .from("profiles")
         .select("id")
-        .ilike("full_name", name)
+        .ilike("full_name", escaped)
         .limit(1)
       if (duplicate && duplicate.length > 0) {
         return NextResponse.json(

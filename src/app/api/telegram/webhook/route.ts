@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
   try {
     const secret = req.headers.get("x-telegram-bot-api-secret-token")
     const expected = process.env.TELEGRAM_WEBHOOK_SECRET
-    if (expected && secret !== expected) {
+    if (!expected || secret !== expected) {
       return NextResponse.json({ ok: false }, { status: 403 })
     }
 

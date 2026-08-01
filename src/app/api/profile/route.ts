@@ -42,10 +42,11 @@ export async function PUT(request: NextRequest) {
 
   if (typeof allowedFields.full_name === "string" && allowedFields.full_name.trim()) {
     const name = allowedFields.full_name.trim()
+    const escaped = name.replace(/[\\%_]/g, (m) => `\\${m}`)
     const { data: duplicate } = await auth.supabase
       .from("profiles")
       .select("id")
-      .ilike("full_name", name)
+      .ilike("full_name", escaped)
       .neq("id", auth.user.id)
       .limit(1)
     if (duplicate && duplicate.length > 0) {

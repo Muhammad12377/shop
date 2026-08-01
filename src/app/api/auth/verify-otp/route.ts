@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
     const origin = body?.origin === "register" || body?.origin === "forgot" ? body.origin : null
     const name = typeof body?.name === "string" ? body.name.trim() : ""
     const password = typeof body?.password === "string" ? body.password : ""
-    const otpSentAt = typeof body?.otpSentAt === "string" ? body.otpSentAt : ""
     const captchaToken = typeof body?.captchaToken === "string" ? body.captchaToken : null
 
     if (!email || !code || !origin) {
@@ -51,9 +50,8 @@ export async function POST(req: NextRequest) {
     let created = false
     if (origin === "register" && data?.user) {
       created =
-        !!otpSentAt &&
         !!data.user.created_at &&
-        new Date(data.user.created_at).getTime() >= new Date(otpSentAt).getTime()
+        Date.now() - new Date(data.user.created_at).getTime() <= 15 * 60 * 1000
 
       if (created) {
         if (password) {

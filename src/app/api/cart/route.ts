@@ -70,17 +70,20 @@ export async function POST(request: NextRequest) {
   const stockMap: Record<string, any> = {}
   for (const p of products || []) stockMap[p.id] = p
 
-  const rows = clean.map((item) => {
-    const product = stockMap[item.product_id]
-    const maxQty = Number(product?.size_stock?.[item.size ?? ""] ?? product?.stock ?? 0)
-    return {
-      user_id: auth.user.id,
-      product_id: item.product_id,
-      size: item.size,
-      color: item.color,
-      quantity: maxQty > 0 ? Math.min(item.quantity, maxQty) : item.quantity,
-    }
-  })
+  const rows = clean
+    .map((item) => {
+      const product = stockMap[item.product_id]
+      const maxQty = Number(product?.size_stock?.[item.size ?? ""] ?? product?.stock ?? 0)
+      if (!product || maxQty <= 0) return null
+      return {
+        user_id: auth.user.id,
+        product_id: item.product_id,
+        size: item.size,
+        color: item.color,
+        quantity: Math.min(item.quantity, maxQty),
+      }
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
 
   const { error: delError } = await auth.supabase.from("cart_items").delete().eq("user_id", auth.user.id)
   if (delError) return NextResponse.json({ success: false, error: delError.message } satisfies ApiResponse, { status: 500 })

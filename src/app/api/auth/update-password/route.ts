@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createServerSupabase()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 })
+    }
     const { error } = await supabase.auth.updateUser({ password })
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
