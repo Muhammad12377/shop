@@ -172,7 +172,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
         </nav>
 
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          <div>
+          <div className="min-w-0">
             <div className="aspect-square rounded-2xl bg-zinc-100 overflow-hidden mb-3 relative">
               {showVideo && product.video_url ? (
                 <video
@@ -229,7 +229,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
             )}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-zinc-400 uppercase tracking-wider mb-2">
               {product.category
                 ? isRtl
@@ -290,7 +290,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
 
             <div className="mb-8">
               <p className="text-sm font-medium mb-3">{t("colors")}</p>
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-wrap gap-2 items-center">
                 {(product.colors || []).map((color: string) => (
                   <span
                     key={color}
