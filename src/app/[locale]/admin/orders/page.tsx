@@ -219,9 +219,36 @@ export default function AdminOrdersPage({ params: paramsPromise }: { params: Pro
                           </div>
                         ))}
                       </div>
-                      <div className="border-t border-zinc-100 mt-2 pt-2 flex justify-between text-sm font-medium">
-                        <span>{isRtl ? "الإجمالي" : "Total"}</span>
-                        <span>${order.total?.toFixed(2)}</span>
+                      <div className="border-t border-zinc-100 mt-2 pt-2 space-y-1.5">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-zinc-500">{isRtl ? "المجموع الفرعي" : "Subtotal"}</span>
+                          <span>${Number(order.subtotal ?? 0).toFixed(2)}</span>
+                        </div>
+                        {Number(order.discount ?? 0) > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-zinc-500">
+                              {isRtl ? `الخصم (الكوبون)` : "Coupon discount"}
+                              {order.coupon_code ? (
+                                <span className="ml-1 inline-block px-1.5 py-0.5 rounded bg-green-50 text-green-700 text-xs font-mono uppercase">
+                                  {order.coupon_code}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="text-green-600">-${Number(order.discount).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm">
+                          <span className="text-zinc-500">{isRtl ? "الشحن" : "Shipping"}</span>
+                          <span>
+                            {Number(order.shipping_fee ?? 0) === 0
+                              ? isRtl ? "مجاني" : "Free"
+                              : `$${Number(order.shipping_fee).toFixed(2)}`}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold border-t border-zinc-100 pt-2">
+                          <span>{isRtl ? "الإجمالي" : "Total"}</span>
+                          <span>${order.total?.toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
                   )}
