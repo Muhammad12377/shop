@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Upload, Trash2, Copy, Check, FileIcon, Loader2 } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Media } from "@/types"
+import ImageCropModal from "@/components/admin/ImageCropModal"
 
 export default function AdminMediaPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
   const [locale, setLocale] = useState("en")
@@ -14,6 +15,7 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
@@ -36,7 +38,12 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    uploadFile(file)
+    if (file.type.startsWith("video/")) {
+      uploadFile(file)
+    } else {
+      setPendingFile(file)
+    }
+    if (fileRef.current) fileRef.current.value = ""
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -44,7 +51,16 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
     if (!file) return
-    uploadFile(file)
+    if (file.type.startsWith("video/")) {
+      uploadFile(file)
+    } else {
+      setPendingFile(file)
+    }
+  }
+
+  const handleCropConfirm = async (file: File) => {
+    setPendingFile(null)
+    await uploadFile(file)
   }
 
   const uploadFile = async (file: File) => {
@@ -215,6 +231,18 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
             </div>
           ))}
         </div>
+      )}
+
+      {pendingFile && (
+        <ImageCropModal
+          file={pendingFile}
+          isRtl={isRtl}
+          onCancel={() => {
+            setPendingFile(null)
+            if (fileRef.current) fileRef.current.value = ""
+          }}
+          onConfirm={handleCropConfirm}
+        />
       )}
 
       {deleteId && (

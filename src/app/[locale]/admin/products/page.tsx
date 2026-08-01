@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIc
 import toast from "react-hot-toast"
 import type { Product, ProductCategory, Media } from "@/types"
 import { colorBackground, colorLabel } from "@/lib/colors"
+import ImageCropModal from "@/components/admin/ImageCropModal"
 
 const presetColors = [
   "#ffffff", "#000000", "#f5f5f5", "#9ca3af", "#6b7280", "#374151",
@@ -47,6 +48,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const [colorInput, setColorInput] = useState("")
   const [combinePick, setCombinePick] = useState<string[]>([])
   const [imageInput, setImageInput] = useState("")
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
@@ -234,8 +236,13 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    await uploadMedia(file, false)
+    setPendingImageFile(file)
     if (e.target) e.target.value = ""
+  }
+
+  const handleCropConfirm = async (file: File) => {
+    setPendingImageFile(null)
+    await uploadMedia(file, false)
   }
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -891,6 +898,16 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
             </div>
           </div>
         </div>
+      )}
+
+      {pendingImageFile && (
+        <ImageCropModal
+          file={pendingImageFile}
+          isRtl={isRtl}
+          initialPresetId="product"
+          onCancel={() => setPendingImageFile(null)}
+          onConfirm={handleCropConfirm}
+        />
       )}
 
       {deleteId && (

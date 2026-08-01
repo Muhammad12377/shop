@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Loader2, Save, Upload, Image as ImageIcon, Check, FileIcon, X } from "lucide-react"
 import toast from "react-hot-toast"
 import type { StoreSettings, Media } from "@/types"
+import ImageCropModal from "@/components/admin/ImageCropModal"
 
 const defaultSettings: StoreSettings = {
   store_name: "Sneakers Take Off",
@@ -68,6 +69,7 @@ export default function AdminSettingsPage({ params: paramsPromise }: { params: P
   const [mediaItems, setMediaItems] = useState<Media[]>([])
   const [mediaModalOpen, setMediaModalOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
@@ -97,6 +99,12 @@ export default function AdminSettingsPage({ params: paramsPromise }: { params: P
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setPendingImageFile(file)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const handleCropConfirm = async (file: File) => {
+    setPendingImageFile(null)
     setUploading(true)
     try {
       const fd = new FormData()
@@ -110,7 +118,6 @@ export default function AdminSettingsPage({ params: paramsPromise }: { params: P
       toast.error(err.message || (isRtl ? "خطأ في الرفع" : "Upload failed"))
     } finally {
       setUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ""
     }
   }
 
@@ -366,6 +373,16 @@ export default function AdminSettingsPage({ params: paramsPromise }: { params: P
             </div>
           </div>
         </div>
+      )}
+
+      {pendingImageFile && (
+        <ImageCropModal
+          file={pendingImageFile}
+          isRtl={isRtl}
+          initialPresetId="hero"
+          onCancel={() => setPendingImageFile(null)}
+          onConfirm={handleCropConfirm}
+        />
       )}
 
         <div className="flex justify-end pb-8">
