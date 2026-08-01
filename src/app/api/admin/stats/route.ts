@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
+import { fetchVerifiedAuthUsers } from "@/lib/admin-users"
 
 export async function GET() {
   try {
@@ -11,7 +12,17 @@ export async function GET() {
 
     const { count: totalOrders } = await supabase.from("orders").select("*", { count: "exact", head: true })
     const { count: totalProducts } = await supabase.from("products").select("*", { count: "exact", head: true })
-    const { count: totalUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true })
+
+    let totalUsers = 0
+    try {
+      const { verified } = await fetchVerifiedAuthUsers()
+      const { data: profiles } = await supabase.from("profiles").select("email")
+      const profileEmails = new Set((profiles || []).map((p) => (p.email || "").toLowerCase()))
+      totalUsers = verified.filter((v) => profileEmails.has(v.email)).length
+    } catch {
+      totalUsers = 0
+    }
+
     const { count: totalCategories } = await supabase.from("categories").select("*", { count: "exact", head: true })
     const { count: totalCoupons } = await supabase.from("coupons").select("*", { count: "exact", head: true })
 
@@ -51,7 +62,7 @@ export async function GET() {
       total_orders: totalOrders || 0,
       total_revenue: totalRevenue,
       total_products: totalProducts || 0,
-      total_users: totalUsers || 0,
+      total_users: totalUsers,
       total_categories: totalCategories || 0,
       total_coupons: totalCoupons || 0,
       pending_orders: pendingOrders,
