@@ -1,5 +1,13 @@
 const buckets = new Map<string, { count: number; resetAt: number }>()
 
+export function getClientIp(req: Request): string {
+  if ("ip" in req && typeof (req as { ip?: string }).ip === "string" && (req as { ip?: string }).ip) {
+    return (req as { ip?: string }).ip as string
+  }
+  const fwd = req.headers.get("x-forwarded-for") || ""
+  return fwd.split(",")[0]?.trim() || "unknown"
+}
+
 function cleanup() {
   const now = Date.now()
   for (const [key, bucket] of buckets) {

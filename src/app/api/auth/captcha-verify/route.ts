@@ -18,7 +18,6 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({ secret, response: token }),
   })
   const data = await res.json()
-  console.log("captcha-verify result:", JSON.stringify({ token: token.slice(0, 10), data }))
 
   return Response.json({ success: !!data.success, error: data["error-codes"]?.[0] ?? null })
 }

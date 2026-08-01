@@ -41,8 +41,18 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  if (!body.product_id || !body.rating) {
+  if (!body.product_id) {
     return NextResponse.json({ success: false, error: "Missing product_id or rating" } satisfies ApiResponse, { status: 400 })
+  }
+
+  const rating = Number(body.rating)
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return NextResponse.json({ success: false, error: "Rating must be a whole number between 1 and 5" } satisfies ApiResponse, { status: 400 })
+  }
+
+  const comment = typeof body.comment === "string" ? body.comment.trim() : null
+  if (comment && comment.length > 1000) {
+    return NextResponse.json({ success: false, error: "Review comment is too long" } satisfies ApiResponse, { status: 400 })
   }
 
   const { data: existing } = await auth.supabase
@@ -82,7 +92,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await auth.supabase
     .from("reviews")
-    .insert({ user_id: auth.user.id, product_id: body.product_id, rating: body.rating, comment: body.comment || null })
+    .insert({ user_id: auth.user.id, product_id: body.product_id, rating, comment })
     .select("*, user:profiles(full_name, avatar_url)")
     .single()
 
@@ -97,8 +107,8 @@ export async function POST(request: NextRequest) {
   await notifyAdmin({
     type: "new_review",
     product: product?.name_ar || product?.name_en || "منتج",
-    rating: body.rating,
-    comment: body.comment || null,
+    rating,
+    comment,
     user: auth.user.email || null,
   })
 

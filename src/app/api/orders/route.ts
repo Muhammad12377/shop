@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
-import { rateLimit } from "@/lib/rate-limit"
+import { rateLimit, getClientIp } from "@/lib/rate-limit"
 import { notifyAdmin } from "@/lib/telegram"
 import type { ApiResponse } from "@/types"
 
@@ -26,7 +26,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+  const ip = getClientIp(request)
   const limited = rateLimit(ip, "orders", 5, 60)
   if (!limited.allowed) {
     return NextResponse.json({ success: false, error: "Too many orders, please try again later" } satisfies ApiResponse, { status: 429 })

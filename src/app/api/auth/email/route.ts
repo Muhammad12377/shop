@@ -18,7 +18,7 @@ function safeEqual(a: string, b: string): boolean {
 
 function verifySignature(payload: string, headers: Headers): boolean {
   const secret = getSecretKey()
-  if (secret.length === 0) return true
+  if (secret.length === 0) return false
 
   const id = headers.get("webhook-id")
   const ts = headers.get("webhook-timestamp")

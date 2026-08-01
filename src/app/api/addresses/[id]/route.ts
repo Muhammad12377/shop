@@ -16,9 +16,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params
   const body = await request.json()
 
+  const allowedFields: Record<string, any> = {}
+  if (body.label !== undefined) allowedFields.label = body.label
+  if (body.full_name !== undefined) allowedFields.full_name = body.full_name
+  if (body.phone !== undefined) allowedFields.phone = body.phone
+  if (body.address !== undefined) allowedFields.address = body.address
+  if (body.city !== undefined) allowedFields.city = body.city
+  if (body.is_default !== undefined) allowedFields.is_default = Boolean(body.is_default)
+
+  if (Object.keys(allowedFields).length === 0) {
+    return NextResponse.json({ success: false, error: "No valid fields to update" } satisfies ApiResponse, { status: 400 })
+  }
+
   const { data, error } = await auth.supabase
     .from("addresses")
-    .update(body)
+    .update(allowedFields)
     .eq("id", id)
     .eq("user_id", auth.user.id)
     .select()

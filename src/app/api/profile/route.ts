@@ -36,6 +36,10 @@ export async function PUT(request: NextRequest) {
   if (body.city !== undefined) allowedFields.city = body.city
   if (body.avatar_url !== undefined) allowedFields.avatar_url = body.avatar_url
 
+  if (Object.keys(allowedFields).length === 0) {
+    return NextResponse.json({ success: false, error: "No valid fields to update" } satisfies ApiResponse, { status: 400 })
+  }
+
   const { data, error } = await auth.supabase
     .from("profiles")
     .update(allowedFields)

@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
-import { rateLimit } from "@/lib/rate-limit"
+import { rateLimit, getClientIp } from "@/lib/rate-limit"
 
 const ALLOWED_TYPES: Record<string, string[]> = {
   "image/jpeg": ["jpg", "jpeg"],
@@ -16,9 +16,9 @@ const ALLOWED_TYPES: Record<string, string[]> = {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+    const ip = getClientIp(req)
     const limited = rateLimit(ip, "upload", 20, 60)
     if (!limited.allowed) {
       return NextResponse.json({ error: "Too many requests, try again later" }, { status: 429 })
