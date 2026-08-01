@@ -50,13 +50,13 @@ export default function Footer({ locale }: { locale: string }) {
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2">
                 <Globe className="w-4 h-4" />
-                <a href="https://www.instagram.com/sneakersclub_syria" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
-                  @sneakersclub_syria
+                <a href="https://www.instagram.com/sneakerstakeoff_syria" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
+                  @sneakerstakeoff_syria
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                <span>info@sneakersclub.com</span>
+                <span>info@sneakerstakeoff.com</span>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
