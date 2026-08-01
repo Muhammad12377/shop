@@ -32,10 +32,7 @@
     "quality": "Quality Guaranteed",
     "quality_desc": "100% authentic sneakers with quality guarantee",
     "best_prices": "Best Prices",
-    "best_prices_desc": "Best prices in the market with exclusive deals",
-    "newsletter": "Stay in Touch",
-    "newsletter_desc": "Subscribe for the latest deals and products",
-    "subscribe": "Subscribe"
+    "best_prices_desc": "Best prices in the market with exclusive deals"
   },
   "product": {
     "add_to_cart": "Add to Cart",

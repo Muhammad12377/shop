@@ -34,7 +34,6 @@ export default async function HomePage({ params }: Props) {
         <FeaturesSection locale={locale} />
         <CategoriesSection locale={locale} />
         <FeaturedProductsSection locale={locale} />
-        <NewsletterSection locale={locale} />
       </main>
       <Footer locale={locale} />
     </>
@@ -235,37 +234,6 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
           ))}
         </div>
         )}
-      </div>
-    </section>
-  )
-}
-
-async function NewsletterSection({ locale }: { locale: string }) {
-  const isRtl = locale === "ar"
-  return (
-    <section className="py-16 bg-accent">
-      <div className="max-w-3xl mx-auto px-4 text-center text-white">
-        <h2 className="text-3xl font-bold mb-3">
-          {isRtl ? "ابق على تواصل" : "Stay in Touch"}
-        </h2>
-        <p className="text-white/80 mb-8">
-          {isRtl
-            ? "اشترك في النشرة البريدية لتحصل على أحدث العروض والمنتجات"
-            : "Subscribe to our newsletter for the latest deals and products"}
-        </p>
-        <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-          <input
-            type="email"
-            placeholder={isRtl ? "بريدك الإلكتروني" : "Your email"}
-            className="flex-1 px-4 py-3 rounded-full text-zinc-900 focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="px-8 py-3 rounded-full bg-primary text-white font-medium hover:bg-zinc-800 transition-colors"
-          >
-            {isRtl ? "اشتراك" : "Subscribe"}
-          </button>
-        </form>
       </div>
     </section>
   )
