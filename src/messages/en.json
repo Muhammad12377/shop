@@ -178,6 +178,8 @@
     "no_wishlist": "Your wishlist is empty",
     "add_to_cart": "Add to Cart",
     "remove": "Remove",
+    "max_quantity_in_cart": "Max quantity in cart",
+    "out_of_stock_wishlist": "Out of Stock",
     "wishlist_empty_desc": "Save your favorite items here",
     "wishlist_added": "Added to wishlist",
     "wishlist_removed": "Removed from wishlist"

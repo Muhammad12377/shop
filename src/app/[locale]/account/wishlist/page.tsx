@@ -15,8 +15,30 @@ export default function WishlistPage() {
   const [loading, setLoading] = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
   const addItem = useCartStore((s) => s.addItem)
+  const cartItems = useCartStore((s) => s.items)
   const locale = useLocale()
   const isRtl = locale === "ar"
+
+  const stockFor = (product: any) => {
+    if (!product) return 0
+    const hasPerSize = !!(product.size_stock && Object.keys(product.size_stock).length > 0)
+    const size = product.sizes?.[0] || ""
+    return hasPerSize ? Number(product.size_stock?.[size] ?? 0) : Number(product.stock ?? 0)
+  }
+
+  const cartQtyFor = (product: any) => {
+    if (!product) return 0
+    const size = product.sizes?.[0] || ""
+    return cartItems
+      .filter((i) => i.product_id === product.id && i.size === size)
+      .reduce((sum, i) => sum + i.quantity, 0)
+  }
+
+  const isAtLimit = (product: any) => {
+    const stock = stockFor(product)
+    if (stock <= 0) return true
+    return cartQtyFor(product) >= stock
+  }
 
   const fetchWishlist = async () => {
     const supabase = createClient()
@@ -51,6 +73,10 @@ export default function WishlistPage() {
   const handleAddToCart = async (item: any) => {
     const product = item.products
     if (!product) return
+    if (isAtLimit(product)) {
+      toast.error(isRtl ? "تمت إضافة الكمية القصوى من هذا المنتج إلى السلة" : "Max quantity of this item is already in your cart")
+      return
+    }
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -68,6 +94,7 @@ export default function WishlistPage() {
       color: product.colors?.[0] || "",
       quantity: 1,
       slug: product.slug,
+      stock: stockFor(product),
     })
     toast.custom(
       (tEl) => (
@@ -130,6 +157,8 @@ export default function WishlistPage() {
         {items.map((item) => {
           const product = item.products
           if (!product) return null
+          const atLimit = isAtLimit(product)
+          const outOfStock = stockFor(product) <= 0
           return (
             <div key={item.id} className="bg-white rounded-2xl border border-zinc-100 overflow-hidden group">
               <Link href={`/product/${product.id}`} className="block aspect-square bg-gradient-to-br from-zinc-200 to-zinc-300 flex items-center justify-center relative">
@@ -154,10 +183,19 @@ export default function WishlistPage() {
                 <div className="flex items-center gap-2 mt-3">
                   <button
                     onClick={() => handleAddToCart(item)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-full bg-accent text-white text-xs font-medium hover:bg-accent-light transition-colors"
+                    disabled={atLimit}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      atLimit
+                        ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                        : "bg-accent text-white hover:bg-accent-light"
+                    }`}
                   >
                     <ShoppingCart className="w-3.5 h-3.5" />
-                    {t("add_to_cart")}
+                    {atLimit
+                      ? outOfStock
+                        ? t("out_of_stock_wishlist")
+                        : t("max_quantity_in_cart")
+                      : t("add_to_cart")}
                   </button>
                   <button
                     onClick={() => handleRemove(item.product_id)}

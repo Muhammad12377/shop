@@ -179,6 +179,8 @@
     "no_wishlist": "المفضلة فارغة",
     "add_to_cart": "أضف إلى السلة",
     "remove": "إزالة",
+    "max_quantity_in_cart": "الكمية القصوى في السلة",
+    "out_of_stock_wishlist": "غير متوفر",
     "wishlist_empty_desc": "احفظ منتجاتك المفضلة هنا",
     "wishlist_added": "أضيف إلى المفضلة",
     "wishlist_removed": "أزيل من المفضلة"
