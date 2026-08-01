@@ -4,6 +4,7 @@ import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import ProductFilters from "@/components/products/ProductFilters"
 import ProductCard from "@/components/products/ProductCard"
+import Reveal from "@/components/motion/Reveal"
 import { Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { getCachedCategories, getCachedProducts, getCachedAllSizes } from "@/lib/home-data"
 import { groupBySku } from "@/lib/group-products"
@@ -118,8 +119,10 @@ export default async function ProductsPage({ params, searchParams }: Props) {
             ) : (
               <>
                 <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                  {groupBySku(products).map((cluster) => (
-                    <ProductCard key={cluster.key} variants={cluster.variants} locale={locale} />
+                  {groupBySku(products).map((cluster, i) => (
+                    <Reveal key={cluster.key} delay={(i % 12) * 70} stagger>
+                      <ProductCard variants={cluster.variants} locale={locale} />
+                    </Reveal>
                   ))}
                 </div>
 

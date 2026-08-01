@@ -4,6 +4,7 @@ import Image from "next/image"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import ProductCard from "@/components/products/ProductCard"
+import Reveal from "@/components/motion/Reveal"
 import { ArrowRight, Sparkles, Shield, Truck } from "lucide-react"
 import { getCachedSettings, getCachedCategories, getCachedHomeProducts } from "@/lib/home-data"
 import { groupBySku } from "@/lib/group-products"
@@ -75,33 +76,51 @@ async function HeroSection({ locale }: { locale: string }) {
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
       )}
       <div className={`absolute inset-0 ${heroImage ? "bg-black/50" : ""}`} />
+      {!heroImage && (
+        <div className="absolute top-16 end-8 hidden lg:flex flex-col gap-3 animate-float" aria-hidden>
+          <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 backdrop-blur flex items-center justify-center text-accent">
+            <Sparkles className="w-8 h-8" />
+          </div>
+          <div className="w-16 h-16 rounded-full bg-accent/20 border border-accent/30 backdrop-blur flex items-center justify-center text-white text-xs font-semibold">
+            {isRtl ? "جديد" : "NEW"}
+          </div>
+        </div>
+      )}
       <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-32">
         <div className="max-w-2xl">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-accent" />
-            <span className="text-sm font-medium text-accent uppercase tracking-wider">
-              {isRtl ? "مجموعة 2026" : "2026 Collection"}
-            </span>
-          </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">{heroTitle}</h1>
-          <p className="text-lg md:text-xl text-zinc-400 mb-8 max-w-lg">{heroSubtitle}</p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link
-              href="/products"
-              locale={locale}
-              className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-light text-white px-8 py-3 rounded-full font-medium transition-colors"
-            >
-              {t("shop_now")}
-              <ArrowRight className={`w-4 h-4 ${isRtl ? "rotate-180" : ""}`} />
-            </Link>
-            <Link
-              href="/products?category=men"
-              locale={locale}
-              className="inline-flex items-center justify-center gap-2 border border-white/20 hover:border-white/40 text-white px-8 py-3 rounded-full font-medium transition-colors"
-            >
-              {t("men")}
-            </Link>
-          </div>
+          <Reveal delay={100}>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-accent animate-wiggle" />
+              <span className="text-sm font-medium text-accent uppercase tracking-wider">
+                {isRtl ? "مجموعة 2026" : "2026 Collection"}
+              </span>
+            </div>
+          </Reveal>
+          <Reveal delay={250}>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">{heroTitle}</h1>
+          </Reveal>
+          <Reveal delay={400}>
+            <p className="text-lg md:text-xl text-zinc-400 mb-8 max-w-lg">{heroSubtitle}</p>
+          </Reveal>
+          <Reveal delay={550}>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link
+                href="/products"
+                locale={locale}
+                className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-light text-white px-8 py-3 rounded-full font-medium transition-all hover:scale-105 active:scale-95"
+              >
+                {t("shop_now")}
+                <ArrowRight className={`w-4 h-4 ${isRtl ? "rotate-180" : ""}`} />
+              </Link>
+              <Link
+                href="/products?category=men"
+                locale={locale}
+                className="inline-flex items-center justify-center gap-2 border border-white/20 hover:border-white/40 hover:bg-white/10 text-white px-8 py-3 rounded-full font-medium transition-all hover:scale-105 active:scale-95"
+              >
+                {t("men")}
+              </Link>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -133,13 +152,13 @@ async function FeaturesSection({ locale }: { locale: string }) {
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {features.map((f, i) => (
-            <div key={i} className="text-center p-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-accent/10 text-accent mb-4">
+            <Reveal key={i} delay={i * 150} className="text-center p-6 group">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-accent/10 text-accent mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
                 <f.icon className="w-6 h-6" />
               </div>
               <h3 className="font-semibold text-lg mb-2">{f.title}</h3>
               <p className="text-zinc-500 text-sm">{f.desc}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -165,38 +184,39 @@ async function CategoriesSection({ locale }: { locale: string }) {
   return (
     <section className="py-16 bg-zinc-50">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-10">
+        <Reveal className="text-center mb-10">
           <h2 className="text-3xl font-bold mb-2">{t("categories")}</h2>
           <p className="text-zinc-500">{isRtl ? "تصفح حسب التصنيف" : "Browse by category"}</p>
-        </div>
+        </Reveal>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {displayCats.map((cat: any, i: number) => (
-            <Link
-              key={cat.id || i}
-              href={`/products?category=${cat.slug}`}
-              locale={locale}
-              className={`relative h-48 rounded-2xl overflow-hidden group ${
-                cat.image_url
-                  ? "bg-zinc-200"
-                  : `bg-gradient-to-br ${colorMap[cat.slug] || "from-zinc-900 to-zinc-700"}`
-              }`}
-            >
-              {cat.image_url ? (
-                <Image
-                  src={cat.image_url}
-                  alt={isRtl ? cat.name_ar || "" : cat.name_en || ""}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              ) : null}
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-              <div className="relative h-full flex items-end p-5">
-                <span className="text-white font-semibold text-lg drop-shadow">
-                  {isRtl ? cat.name_ar : cat.name_en}
-                </span>
-              </div>
-            </Link>
+            <Reveal key={cat.id || i} delay={i * 120} stagger>
+              <Link
+                href={`/products?category=${cat.slug}`}
+                locale={locale}
+                className={`relative h-48 rounded-2xl overflow-hidden group block ${
+                  cat.image_url
+                    ? "bg-zinc-200"
+                    : `bg-gradient-to-br ${colorMap[cat.slug] || "from-zinc-900 to-zinc-700"}`
+                } transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-zinc-900/20`}
+              >
+                {cat.image_url ? (
+                  <Image
+                    src={cat.image_url}
+                    alt={isRtl ? cat.name_ar || "" : cat.name_en || ""}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                ) : null}
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                <div className="relative h-full flex items-end p-5">
+                  <span className="text-white font-semibold text-lg drop-shadow">
+                    {isRtl ? cat.name_ar : cat.name_en}
+                  </span>
+                </div>
+              </Link>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -214,7 +234,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
   return (
     <section className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-10">
+        <Reveal className="flex items-center justify-between mb-10">
           <div>
             <h2 className="text-3xl font-bold">{t("featured")}</h2>
             <p className="text-zinc-500 mt-1">{isRtl ? "أفضل المنتجات لهذا الأسبوع" : "Best products this week"}</p>
@@ -222,7 +242,7 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
           <Link href="/products" locale={locale} className="text-sm font-medium text-accent hover:underline">
             {isRtl ? "عرض الكل" : "View All"}
           </Link>
-        </div>
+        </Reveal>
         {fallback ? (
           <div className="text-center py-12 text-zinc-400">
             {isRtl ? "لا توجد منتجات بعد" : "No products yet"}
@@ -230,7 +250,9 @@ async function FeaturedProductsSection({ locale }: { locale: string }) {
         ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {groupBySku(displayProducts).map((cluster, i) => (
-            <ProductCard key={cluster.key} variants={cluster.variants} locale={locale} priority={i < 4} />
+            <Reveal key={cluster.key} delay={i * 90} stagger>
+              <ProductCard variants={cluster.variants} locale={locale} priority={i < 4} />
+            </Reveal>
           ))}
         </div>
         )}

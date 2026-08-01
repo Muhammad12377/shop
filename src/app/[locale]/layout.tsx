@@ -7,6 +7,7 @@ import { routing } from "@/lib/i18n/routing"
 import { Toaster } from "react-hot-toast"
 import BlockedWatcher from "@/components/auth/BlockedWatcher"
 import CartSync from "@/components/cart/CartSync"
+import PageTransition from "@/components/motion/PageTransition"
 import "../globals.css"
 
 const geist = Geist({
@@ -49,7 +50,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         <NextIntlClientProvider locale={locale} messages={messages}>
           <BlockedWatcher />
           <CartSync />
-          {children}
+          <PageTransition>{children}</PageTransition>
           <Toaster
             position={isRtl ? "top-left" : "top-right"}
             toastOptions={{

@@ -27,7 +27,7 @@ export default function ProductCard({
   const hasMore = list.length > 1
 
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/30 hover:shadow-sm transition-all">
+    <div className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/40 hover:shadow-xl hover:shadow-accent/10 hover:-translate-y-1.5 transition-all duration-300 will-change-transform">
       <Link
         href={`/product/${active?.id}`}
         locale={locale}
@@ -40,7 +40,7 @@ export default function ProductCard({
               alt={name || ""}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1280px) 50vw, 33vw"
-              className="object-cover transition-opacity duration-300"
+              className="object-cover transition-all duration-500 ease-out group-hover:scale-110"
               priority={priority}
             />
             {hasMore && images[(activeIdx + 1) % images.length] && (
@@ -49,7 +49,7 @@ export default function ProductCard({
                 alt=""
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1280px) 50vw, 33vw"
-                className="object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                className="object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
               />
             )}
           </>
@@ -57,7 +57,7 @@ export default function ProductCard({
           <span className="text-zinc-400 text-sm">{isRtl ? "صورة المنتج" : "Product Image"}</span>
         )}
         {discount > 0 && (
-          <span className="absolute top-3 start-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
+          <span className="absolute top-3 start-3 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium group-hover:scale-110 transition-transform">
             {discount}% OFF
           </span>
         )}
@@ -74,8 +74,8 @@ export default function ProductCard({
                   type="button"
                   onClick={() => setActiveIdx(i)}
                   aria-label={`color ${i + 1}`}
-                  className={`w-4 h-4 rounded-full border border-zinc-300 transition-shadow ${
-                    i === activeIdx ? "ring-2 ring-accent ring-offset-1" : ""
+                  className={`w-4 h-4 rounded-full border border-zinc-300 transition-transform hover:scale-125 ${
+                    i === activeIdx ? "ring-2 ring-accent ring-offset-1 scale-110" : ""
                   }`}
                   style={{
                     background:
