@@ -44,7 +44,7 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
   const [customH, setCustomH] = useState(1200)
 
   const imgRef = useRef<HTMLImageElement | null>(null)
-  const boxRef = useRef<HTMLDivElement | null>(null)
+  const areaRef = useRef<HTMLDivElement | null>(null)
   const dragState = useRef<{ mode: string; startX: number; startY: number; rect: CropRect } | null>(null)
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
 
   // Displayed image rect inside the crop container (object-contain)
   const imageRect = useCallback(() => {
-    const el = boxRef.current
+    const el = areaRef.current
     if (!el || !natural.width || !natural.height) return { x: 0, y: 0, width: 0, height: 0 }
     const bw = el.clientWidth
     const bh = el.clientHeight
@@ -94,7 +94,7 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
   }, [natural])
 
   const fitRect = useCallback((ratio: number | null): CropRect => {
-    const el = boxRef.current
+    const el = areaRef.current
     if (!el || !natural.width || !natural.height) return { x: 0, y: 0, width: 100, height: 100 }
     const img = imageRect()
     if (!img.width || !img.height) return { x: 0, y: 0, width: 100, height: 100 }
@@ -150,19 +150,23 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
     return { x, y, width: w, height: h }
   }, [cropRatio, imageRect])
 
-  const onPointerDown = (e: React.PointerEvent, mode: string) => {
+  // ----- Drag logic (all pointer handlers live on elements that own the capture) -----
+
+  const startDrag = (e: React.PointerEvent, mode: string, rectAtStart: CropRect) => {
     e.preventDefault()
     e.stopPropagation()
-    const el = boxRef.current
-    if (!el || !rect) return
-    el.setPointerCapture(e.pointerId)
-    dragState.current = { mode, startX: e.clientX, startY: e.clientY, rect: { ...rect } }
+    const el = e.currentTarget as HTMLElement
+    try {
+      el.setPointerCapture(e.pointerId)
+    } catch {
+      // ignore capture failure
+    }
+    dragState.current = { mode, startX: e.clientX, startY: e.clientY, rect: { ...rectAtStart } }
   }
 
-  const onPointerMove = (e: React.PointerEvent) => {
-    const el = boxRef.current
+  const handleMove = (e: React.PointerEvent) => {
     const ds = dragState.current
-    if (!el || !ds) return
+    if (!ds || !rect) return
     const dx = e.clientX - ds.startX
     const dy = e.clientY - ds.startY
     const r = ds.rect
@@ -177,7 +181,7 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
       case "se": {
         let w = r.width + dx
         let h = ratio ? w / ratio : r.height + dy
-        w = Math.max(40, Math.min(w, clampRect({ x: r.x, y: r.y, width: r.width + dx, height: r.height + dy }).width))
+        w = Math.max(40, w)
         h = Math.max(40, h)
         if (ratio) h = w / ratio
         next = { x: r.x, y: r.y, width: w, height: h }
@@ -216,7 +220,49 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
     setRect(clampRect(next))
   }
 
-  const onPointerUp = () => {
+  const endDrag = () => {
+    dragState.current = null
+  }
+
+  // Draw a brand-new selection by dragging anywhere on the image
+  const startDraw = (e: React.PointerEvent) => {
+    if (!natural.width || !areaRef.current) return
+    const el = areaRef.current
+    e.preventDefault()
+    try {
+      el.setPointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
+    const br = el.getBoundingClientRect()
+    const px = e.clientX - br.left
+    const py = e.clientY - br.top
+    dragState.current = { mode: "draw", startX: px, startY: py, rect: { x: px, y: py, width: 0, height: 0 } }
+  }
+
+  const handleDrawMove = (e: React.PointerEvent) => {
+    const ds = dragState.current
+    if (!ds || ds.mode !== "draw" || !areaRef.current) return
+    const el = areaRef.current
+    const br = el.getBoundingClientRect()
+    const px = e.clientX - br.left
+    const py = e.clientY - br.top
+    const x0 = ds.startX
+    const y0 = ds.startY
+    let x = Math.min(x0, px)
+    let y = Math.min(y0, py)
+    let w = Math.abs(px - x0)
+    let h = Math.abs(py - y0)
+    if (w < 8) w = 8
+    if (h < 8) h = 8
+    if (cropRatio) {
+      if (w / h > cropRatio) h = w / cropRatio
+      else w = h * cropRatio
+    }
+    setRect(clampRect({ x, y, width: w, height: h }))
+  }
+
+  const endDraw = () => {
     dragState.current = null
   }
 
@@ -224,8 +270,6 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
     if (!rect || !imgRef.current || !natural.width) return
     setBusy(true)
     try {
-      const el = boxRef.current
-      if (!el) return
       const img = imageRect()
       if (!img.width || !img.height) return
 
@@ -356,8 +400,8 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
               </div>
               <p className="text-[11px] text-zinc-400 flex-1 min-w-[160px] pb-1">
                 {isRtl
-                  ? "اسحب الزوايا الأربع لتحديد المنطقة، وسيُحفظ الناتج بالمقاس الذي كتبته أعلاه"
-                  : "Drag the 4 corners to select the area; output will be exactly the size above"}
+                  ? "اسحب على الصورة أو حرّك الزوايا الأربع لتحديد المنطقة، وسيُحفظ الناتج بالمقاس الذي كتبته أعلاه"
+                  : "Drag on the image or move the 4 corners to select the area; output will be exactly the size above"}
               </p>
             </div>
           )}
@@ -374,7 +418,15 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
             </p>
           )}
 
-          <div className="relative bg-zinc-100 rounded-xl overflow-hidden select-none touch-none" style={{ height: "min(420px, 48vh)" }}>
+          <div
+            ref={areaRef}
+            onPointerDown={startDraw}
+            onPointerMove={handleDrawMove}
+            onPointerUp={endDraw}
+            onPointerCancel={endDraw}
+            className="relative bg-zinc-100 rounded-xl overflow-hidden select-none touch-none"
+            style={{ height: "min(420px, 48vh)" }}
+          >
             {src && (
               <img
                 ref={imgRef}
@@ -386,16 +438,15 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
             )}
             {rect && (
               <div
-                ref={boxRef}
                 className="absolute"
                 style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height, touchAction: "none" }}
               >
                 <div
+                  onPointerDown={(e) => startDrag(e, "move", rect)}
+                  onPointerMove={handleMove}
+                  onPointerUp={endDrag}
+                  onPointerCancel={endDrag}
                   className="absolute inset-0 border-2 border-[#f97316] bg-[#f97316]/10"
-                  onPointerDown={(e) => onPointerDown(e, "move")}
-                  onPointerMove={onPointerMove}
-                  onPointerUp={onPointerUp}
-                  onPointerCancel={onPointerUp}
                   style={{ cursor: "move", touchAction: "none" }}
                 />
                 <div className="absolute inset-0 pointer-events-none">
@@ -408,10 +459,10 @@ export default function ImageCropModal({ file, isRtl, initialPresetId = "product
                 {(["nw", "ne", "sw", "se"] as const).map((c) => (
                   <div
                     key={c}
-                    onPointerDown={(e) => onPointerDown(e, c)}
-                    onPointerMove={onPointerMove}
-                    onPointerUp={onPointerUp}
-                    onPointerCancel={onPointerUp}
+                    onPointerDown={(e) => startDrag(e, c, rect)}
+                    onPointerMove={handleMove}
+                    onPointerUp={endDrag}
+                    onPointerCancel={endDrag}
                     style={{ touchAction: "none", cursor: `${c}-resize` }}
                     className={`absolute w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center ${
                       c === "nw" ? "top-0 left-0 -translate-x-1/2 -translate-y-1/2" : ""
