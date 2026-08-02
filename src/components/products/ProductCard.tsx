@@ -23,7 +23,6 @@ export default function ProductCard({
     active?.compare_price && active?.price
       ? Math.round((1 - active.price / active.compare_price) * 100)
       : 0
-  const images = list.map((v: any) => v?.images?.[0]).filter(Boolean)
   const hasMore = list.length > 1
 
   const hasPerSize = !!(active?.size_stock && Object.keys(active.size_stock).length > 0)
@@ -47,9 +46,9 @@ export default function ProductCard({
               className="object-cover transition-all duration-500 ease-out group-hover:scale-110"
               priority={priority}
             />
-            {hasMore && images[(activeIdx + 1) % images.length] && (
+            {active?.images?.[1] && (
               <Image
-                src={images[(activeIdx + 1) % images.length]}
+                src={active.images[1]}
                 alt=""
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1280px) 50vw, 33vw"

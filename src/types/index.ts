@@ -50,6 +50,7 @@ export type Product = {
   featured: boolean
   active: boolean
   video_url?: string
+  category_ids?: string[]
   created_at: string
   updated_at?: string
 }

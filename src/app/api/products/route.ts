@@ -11,13 +11,38 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get("sort") || "newest"
   const featured = searchParams.get("featured")
 
+  let matchedIds: string[] | null = null
+  if (category) {
+    const { data: cats } = await supabase.from("categories").select("id, parent_id").eq("active", true)
+    const cat = (cats || []).find((c: any) => c.slug === category)
+    if (cat) {
+      const ids = [cat.id]
+      const stack = [cat.id]
+      while (stack.length) {
+        const cur = stack.pop()!
+        for (const c of cats || []) {
+          if (c.parent_id === cur && !ids.includes(c.id)) {
+            ids.push(c.id)
+            stack.push(c.id)
+          }
+        }
+      }
+      const { data: catRows } = await supabase
+        .from("product_categories")
+        .select("product_id")
+        .in("category_id", ids)
+      matchedIds = Array.from(new Set((catRows || []).map((r: any) => r.product_id)))
+    }
+  }
+
   let query = supabase
     .from("products")
     .select("*, category:categories(*)")
     .eq("active", true)
 
-  if (category) {
-    query = query.eq("category.slug", category)
+  if (matchedIds) {
+    if (matchedIds.length === 0) return NextResponse.json({ success: true, data: [] } satisfies ApiResponse)
+    query = query.in("id", matchedIds)
   }
 
   if (search) {

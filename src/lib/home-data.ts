@@ -93,7 +93,18 @@ export const getCachedSiblingProducts = unstable_cache(
 export const getCachedAllSizes = unstable_cache(
   async (categoryIds?: string[]) => {
     let query = client.from("products").select("sizes").eq("active", true)
-    if (categoryIds && categoryIds.length > 0) query = query.in("category_id", categoryIds)
+    if (categoryIds && categoryIds.length > 0) {
+      const { data: catRows } = await client
+        .from("product_categories")
+        .select("product_id")
+        .in("category_id", categoryIds)
+      const ids = Array.from(new Set((catRows || []).map((r: any) => r.product_id)))
+      if (ids.length > 0) {
+        query = query.in("id", ids)
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000")
+      }
+    }
     const { data } = await query
     const set = new Set<string>()
     for (const row of data || []) {
@@ -110,13 +121,24 @@ export const getCachedAllSizes = unstable_cache(
 export const getCachedProducts = unstable_cache(
   async (opts: { q?: string; categoryIds?: string[]; sort?: string; sizes?: string[]; page: number; limit: number }) => {
     const search = opts.q?.replace(/[%_]/g, "").trim()
+
+    let matchedIds: string[] | null = null
+    if (opts.categoryIds && opts.categoryIds.length > 0) {
+      const { data: catRows } = await client
+        .from("product_categories")
+        .select("product_id")
+        .in("category_id", opts.categoryIds)
+      matchedIds = Array.from(new Set((catRows || []).map((r: any) => r.product_id)))
+    }
+
     let query = client
       .from("products")
       .select("*, category:categories(*)", { count: "exact" })
       .eq("active", true)
 
-    if (opts.categoryIds && opts.categoryIds.length > 0) {
-      query = query.in("category_id", opts.categoryIds)
+    if (matchedIds) {
+      if (matchedIds.length === 0) return { products: [], total: 0 }
+      query = query.in("id", matchedIds)
     }
 
     if (search) {

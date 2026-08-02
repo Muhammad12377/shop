@@ -15,7 +15,7 @@ const presetColors = [
   "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
 ]
 
-const defaultProduct: Partial<Product> = {
+const defaultProduct: Partial<Product> & { category_ids?: string[] } = {
   name_en: "",
   name_ar: "",
   description_en: "",
@@ -23,6 +23,7 @@ const defaultProduct: Partial<Product> = {
   price: 0,
   compare_price: 0,
   category_id: "",
+  category_ids: [],
   sizes: [],
   colors: [],
   stock: 0,
@@ -107,7 +108,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ ...defaultProduct, size_stock: {} })
+    setForm({ ...defaultProduct, size_stock: {}, category_ids: [] })
     setModalOpen(true)
   }
 
@@ -117,7 +118,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     for (const s of product.sizes || []) {
       if (!(s in sizeStock)) sizeStock[s] = 0
     }
-    setForm({ ...product, size_stock: sizeStock })
+    setForm({ ...product, size_stock: sizeStock, category_ids: (product as any).category_ids || [] })
     setModalOpen(true)
   }
 
@@ -131,7 +132,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, stock: totalStock }),
+        body: JSON.stringify({ ...form, stock: totalStock, category_ids: form.category_ids || [] }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -590,19 +591,40 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">{isRtl ? "التصنيف" : "Category"}</label>
-                <select
-                  value={form.category_id || ""}
-                  onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
-                >
-                  <option value="">{isRtl ? "اختر تصنيف" : "Select category"}</option>
-                  {categoryOptions.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
+                  {isRtl ? "التصنيفات (يمكن اختيار أكثر من تصنيف)" : "Categories (multiple allowed)"}
+                </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {categoryOptions.map((o) => {
+                    const selected = (form.category_ids || []).includes(o.id)
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => {
+                          const cur = form.category_ids || []
+                          setForm({
+                            ...form,
+                            category_ids: selected ? cur.filter((x: string) => x !== o.id) : [...cur, o.id],
+                          })
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors cursor-pointer ${
+                          selected
+                            ? "bg-[#f97316] text-white border-[#f97316] font-medium"
+                            : "border-zinc-200 text-zinc-600 hover:border-[#f97316] hover:text-[#f97316]"
+                        }`}
+                      >
+                        {o.label}
+                        {selected && <Check className="w-3.5 h-3.5 inline ms-1" />}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-zinc-400">
+                  {isRtl
+                    ? "المنتج سيظهر في كل التصنيفات المختارة. اتركها فارغة إن لم تحدد بعد."
+                    : "The product will appear in all selected categories."}
+                </p>
               </div>
 
               <div>
