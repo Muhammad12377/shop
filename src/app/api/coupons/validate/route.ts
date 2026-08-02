@@ -3,9 +3,17 @@ import { createServerSupabase } from "@/lib/supabase/server"
 import { rateLimit, getClientIp } from "@/lib/rate-limit"
 import type { ApiResponse } from "@/types"
 
+const COUPON_ERRORS: Record<string, string> = {
+  missing_code: "Missing code or total",
+  not_found: "Coupon not found",
+  inactive: "Coupon is inactive",
+  expired: "Coupon has expired",
+  limit: "Coupon usage limit reached",
+}
+
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  const limited = rateLimit(ip, "coupons", 30, 60)
+  const limited = await rateLimit(ip, "coupons", 30, 60)
   if (!limited.allowed) {
     return NextResponse.json({ success: false, error: "Too many requests, try again later" } satisfies ApiResponse, { status: 429 })
   }
@@ -17,47 +25,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Missing code or total" } satisfies ApiResponse, { status: 400 })
   }
 
-  const { data: coupon, error } = await supabase
-    .from("coupons")
-    .select("*")
-    .eq("code", body.code.toUpperCase())
-    .single()
+  const { data, error } = await supabase.rpc("validate_coupon", {
+    p_code: String(body.code),
+    p_subtotal: Number(body.total),
+  })
 
-  if (error || !coupon) {
-    return NextResponse.json({ success: false, error: "Coupon not found" } satisfies ApiResponse, { status: 404 })
+  if (error) {
+    return NextResponse.json({ success: false, error: "Coupon validation failed" } satisfies ApiResponse, { status: 500 })
   }
 
-  if (!coupon.active) {
-    return NextResponse.json({ success: false, error: "Coupon is inactive" } satisfies ApiResponse, { status: 400 })
-  }
-
-  if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
-    return NextResponse.json({ success: false, error: "Coupon has expired" } satisfies ApiResponse, { status: 400 })
-  }
-
-  if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
-    return NextResponse.json({ success: false, error: "Coupon usage limit reached" } satisfies ApiResponse, { status: 400 })
-  }
-
-  if (Number(body.total) < Number(coupon.min_order)) {
-    return NextResponse.json({ success: false, error: `Minimum order amount is ${coupon.min_order}` } satisfies ApiResponse, { status: 400 })
-  }
-
-  let discount_amount = 0
-  if (coupon.discount_type === "percentage") {
-    discount_amount = (Number(body.total) * Number(coupon.discount_value)) / 100
-  } else {
-    discount_amount = Number(coupon.discount_value)
+  if (!data?.success) {
+    const code = String(data?.error || "not_found")
+    const message = COUPON_ERRORS[code] || "Coupon not found"
+    const isMinOrder = code === "min_order"
+    return NextResponse.json(
+      {
+        success: false,
+        error: isMinOrder ? `Minimum order amount is ${data?.min_order}` : message,
+        code,
+      } satisfies ApiResponse,
+      { status: 400 }
+    )
   }
 
   return NextResponse.json({
     success: true,
     data: {
-      code: coupon.code,
-      discount_type: coupon.discount_type,
-      discount_value: Number(coupon.discount_value),
-      min_order: Number(coupon.min_order),
-      discount_amount: Math.min(discount_amount, Number(body.total)),
+      code: data.code,
+      discount_type: data.discount_type,
+      discount_value: Number(data.discount_value),
+      min_order: Number(data.min_order),
+      discount_amount: Number(data.discount_amount),
     },
   } satisfies ApiResponse)
 }

@@ -44,7 +44,7 @@ function sniffFileType(bytes: Uint8Array, declaredExt: string): boolean {
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req)
-    const limited = rateLimit(ip, "upload", 20, 60)
+    const limited = await rateLimit(ip, "upload", 20, 60)
     if (!limited.allowed) {
       return NextResponse.json({ error: "Too many requests, try again later" }, { status: 429 })
     }

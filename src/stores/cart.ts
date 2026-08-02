@@ -4,6 +4,8 @@ import type { CartItem } from "@/types"
 
 type CartStore = {
   items: CartItem[]
+  hasHydrated: boolean
+  setHasHydrated: (v: boolean) => void
   addItem: (item: CartItem) => void
   removeItem: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
@@ -35,6 +37,8 @@ export const useCartStore = create<CartStore>()(
 
       return {
         items: [],
+        hasHydrated: false,
+        setHasHydrated: (v) => set({ hasHydrated: v }),
         addItem: (item) => {
           const items = get().items
           const existing = items.find(
@@ -87,6 +91,11 @@ export const useCartStore = create<CartStore>()(
         },
       }
     },
-    { name: "cart-storage" }
+    {
+      name: "cart-storage",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
+    }
   )
 )

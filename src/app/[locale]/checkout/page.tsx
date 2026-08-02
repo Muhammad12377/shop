@@ -17,7 +17,7 @@ export default function CheckoutPage() {
   const t = useTranslations("checkout")
   const ct = useTranslations("cart")
   const router = useRouter()
-  const { items, total, clearCart } = useCartStore()
+  const { items, total, clearCart, hasHydrated } = useCartStore()
   const [loading, setLoading] = useState(false)
   const [addresses, setAddresses] = useState<Address[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string>("")
@@ -88,6 +88,8 @@ export default function CheckoutPage() {
       })
       .catch(() => {})
   }, [])
+
+  if (!hasHydrated) return null
 
   if (items.length === 0) {
     router.push("/cart")

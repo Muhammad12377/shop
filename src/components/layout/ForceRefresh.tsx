@@ -3,17 +3,28 @@
 import { useEffect, useRef } from "react"
 import { usePathname } from "@/lib/i18n/navigation"
 
+const LOCALES = ["en", "ar"]
+
+function getLocale(pathname: string): string | null {
+  const seg = pathname.split("/")[1]
+  return LOCALES.includes(seg) ? seg : null
+}
+
 export default function ForceRefresh() {
   const pathname = usePathname()
-  const first = useRef(true)
+  const currentLocale = getLocale(pathname)
+  const prevLocale = useRef(currentLocale)
 
   useEffect(() => {
-    if (first.current) {
-      first.current = false
+    if (prevLocale.current === null) {
+      prevLocale.current = currentLocale
       return
     }
-    window.location.reload()
-  }, [pathname])
+    if (currentLocale !== prevLocale.current) {
+      prevLocale.current = currentLocale
+      window.location.reload()
+    }
+  }, [currentLocale])
 
   return null
 }

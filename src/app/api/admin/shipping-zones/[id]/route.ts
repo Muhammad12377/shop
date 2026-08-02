@@ -1,20 +1,10 @@
 import { NextResponse } from "next/server"
-import { createServerSupabase } from "@/lib/supabase/server"
-
-async function requireAdmin() {
-  const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== "admin") return null
-  return supabase
-}
+import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await requireAdmin()
-    if (!supabase) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const { supabase } = await requireAdmin()
 
     const body = await req.json()
     const update: Record<string, any> = {}
@@ -32,7 +22,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }
@@ -40,13 +31,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await requireAdmin()
-    if (!supabase) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const { supabase } = await requireAdmin()
 
     const { error } = await supabase.from("shipping_zones").delete().eq("id", id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

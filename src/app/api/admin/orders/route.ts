@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server"
-import { createServerSupabase } from "@/lib/supabase/server"
+import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
+    const { supabase } = await requireAdmin()
     const url = new URL(req.url)
     const status = url.searchParams.get("status")
     const search = url.searchParams.get("search")
@@ -51,7 +46,8 @@ export async function GET(req: Request) {
     results = results.map((o) => ({ ...o, user_email: emails[o.user_id] || null }))
 
     return NextResponse.json(results)
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

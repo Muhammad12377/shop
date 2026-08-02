@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server"
-import { createServerSupabase } from "@/lib/supabase/server"
+import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 import { fetchVerifiedAuthUsers } from "@/lib/admin-users"
 
 export async function GET() {
   try {
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const { supabase, userId } = await requireAdmin()
 
     const { providersByEmail } = await fetchVerifiedAuthUsers()
 
@@ -19,11 +15,12 @@ export async function GET() {
       .filter((u) => providersByEmail.get((u.email || "").toLowerCase()) !== "unverified")
       .map((u) => {
         const provider = providersByEmail.get((u.email || "").toLowerCase()) || "unverified"
-        return { ...u, is_me: u.id === user.id, verified: true, provider }
+        return { ...u, is_me: u.id === userId, verified: true, provider }
       })
 
     return NextResponse.json(users)
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

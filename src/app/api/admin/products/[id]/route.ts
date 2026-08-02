@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
-import { createServerSupabase } from "@/lib/supabase/server"
+import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 
 async function uniqueSlug(supabase: any, base: string, excludeId?: string) {
   let slug = base
@@ -18,11 +18,7 @@ async function uniqueSlug(supabase: any, base: string, excludeId?: string) {
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const { supabase } = await requireAdmin()
 
     const { category: _category, category_ids: categoryIds, ...rest } = await req.json()
     const body: any = { ...rest }
@@ -57,7 +53,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     revalidateTag("home", "max")
     revalidateTag("products", "max")
     return NextResponse.json(data)
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }
@@ -65,12 +62,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
+    const { supabase } = await requireAdmin()
     const { error } = await supabase.from("product_categories").delete().eq("product_id", id)
     if (!error) {
       const { error: delErr } = await supabase.from("products").delete().eq("id", id)
@@ -81,7 +73,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     revalidateTag("home", "max")
     revalidateTag("products", "max")
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

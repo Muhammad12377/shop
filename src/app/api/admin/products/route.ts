@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
-import { createServerSupabase } from "@/lib/supabase/server"
+import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 
 async function uniqueSlug(supabase: any, base: string, excludeId?: string) {
   let slug = base
@@ -17,12 +17,7 @@ async function uniqueSlug(supabase: any, base: string, excludeId?: string) {
 
 export async function GET() {
   try {
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
+    const { supabase } = await requireAdmin()
     const { data, error } = await supabase
       .from("products")
       .select("*, category:categories!products_category_id_fkey(*), product_categories:product_categories(category_id)")
@@ -34,19 +29,15 @@ export async function GET() {
       category_ids: (p.product_categories || []).map((pc: any) => pc.category_id),
       product_categories: undefined,
     })))
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
+    const { supabase } = await requireAdmin()
     const { category: _category, category_ids: categoryIds, ...rest } = await req.json()
     const body: any = { ...rest }
     if (body.price != null) body.price = Math.round(Math.max(0, Number(body.price)) * 100) / 100
@@ -81,7 +72,8 @@ export async function POST(req: Request) {
 
     revalidateTag("home", "max")
     return NextResponse.json({ ...data, category_ids: ids })
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

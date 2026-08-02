@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "captcha_failed", code: captcha.error }, { status: 400 })
     }
 
-    const limited = rateLimit(getClientIp(req), "auth-update-password", 5, 60)
+    const limited = await rateLimit(getClientIp(req), "auth-update-password", 5, 60)
     if (!limited.allowed) {
       return NextResponse.json({ ok: false, error: "Too many attempts, try again later" }, { status: 429 })
     }

@@ -19,10 +19,17 @@ export default function Header() {
   const [profile, setProfile] = useState<any>(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const cartCount = useCartStore((s) => s.items.reduce((a, b) => a + b.quantity, 0))
+  const hasHydrated = useCartStore((s) => s.hasHydrated)
   const prevCartCount = useRef(cartCount)
+  const bannedFirst = useRef(false)
   const [cartBump, setCartBump] = useState(false)
 
   useEffect(() => {
+    if (!hasHydrated || !bannedFirst.current) {
+      prevCartCount.current = cartCount
+      if (hasHydrated) bannedFirst.current = true
+      return
+    }
     if (cartCount > prevCartCount.current) {
       setCartBump(true)
       const timer = setTimeout(() => setCartBump(false), 650)
@@ -30,7 +37,7 @@ export default function Header() {
       return () => clearTimeout(timer)
     }
     prevCartCount.current = cartCount
-  }, [cartCount])
+  }, [cartCount, hasHydrated])
 
   useEffect(() => {
     const supabase = createClient()

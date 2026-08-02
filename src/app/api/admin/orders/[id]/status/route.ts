@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
+import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 import { notifyAdmin } from "@/lib/telegram"
 
 async function applyStock(supabase: any, items: any[], sign: 1 | -1) {
@@ -47,11 +48,7 @@ async function applyCoupon(supabase: any, couponCode: string | null, delta: 1 | 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const { supabase, userId } = await requireAdmin()
 
     const { status, note } = await req.json()
     if (!status) return NextResponse.json({ error: "Status is required" }, { status: 400 })
@@ -114,7 +111,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         order_id: id,
         status,
         note,
-        created_by: user.id,
+        created_by: userId,
       })
     }
 
@@ -143,7 +140,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await notifyAdmin({ type: "order_status", id, status })
 
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

@@ -27,7 +27,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  const limited = rateLimit(ip, "orders", 5, 60)
+  const limited = await rateLimit(ip, "orders", 5, 60)
   if (!limited.allowed) {
     return NextResponse.json({ success: false, error: "Too many orders, please try again later" } satisfies ApiResponse, { status: 429 })
   }

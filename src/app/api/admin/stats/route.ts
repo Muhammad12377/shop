@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server"
-import { createServerSupabase } from "@/lib/supabase/server"
+import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 import { fetchVerifiedAuthUsers } from "@/lib/admin-users"
 
 export async function GET() {
   try {
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
+    const { supabase } = await requireAdmin()
     const { count: totalOrders } = await supabase.from("orders").select("*", { count: "exact", head: true })
     const { count: totalProducts } = await supabase.from("products").select("*", { count: "exact", head: true })
 
@@ -71,7 +66,8 @@ export async function GET() {
       revenue_by_month: revenueByMonth,
       orders_by_status: ordersByStatus,
     })
-  } catch {
+  } catch (e) {
+    if (e instanceof AdminAuthError) return NextResponse.json({ error: e.message }, { status: e.status })
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }
