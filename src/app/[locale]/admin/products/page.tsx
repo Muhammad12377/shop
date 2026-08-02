@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import Image from "next/image"
 import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon, Layers } from "lucide-react"
 import toast from "react-hot-toast"
@@ -52,6 +52,22 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
+
+  const catName = (c?: ProductCategory) =>
+    c ? (isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar) : ""
+
+  const categoryOptions = useMemo(() => {
+    const tops = categories.filter((c) => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order)
+    const kidsOf = (id: string) => categories.filter((c) => c.parent_id === id).sort((a, b) => a.sort_order - b.sort_order)
+    const opts: { id: string; label: string; parent: boolean }[] = []
+    for (const t of tops) {
+      opts.push({ id: t.id, label: catName(t), parent: true })
+      for (const k of kidsOf(t.id)) opts.push({ id: k.id, label: `— ${catName(k)}`, parent: false })
+    }
+    for (const o of categories.filter((c) => c.parent_id && !tops.some((t) => t.id === c.parent_id)))
+      opts.push({ id: o.id, label: catName(o), parent: false })
+    return opts
+  }, [categories, isRtl])
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -178,6 +194,13 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
       const sizeStock = { ...(form.size_stock || {}), [sizeInput]: 0 }
       setForm({ ...form, sizes: [...(form.sizes || []), sizeInput], size_stock: sizeStock })
       setSizeInput("")
+    }
+  }
+
+  const addSizePreset = (s: string) => {
+    if (!(form.sizes || []).includes(s)) {
+      const sizeStock = { ...(form.size_stock || {}), [s]: 0 }
+      setForm({ ...form, sizes: [...(form.sizes || []), s], size_stock: sizeStock })
     }
   }
 
@@ -572,9 +595,9 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                 >
                   <option value="">{isRtl ? "اختر تصنيف" : "Select category"}</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar}
+                  {categoryOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
                     </option>
                   ))}
                 </select>
@@ -616,6 +639,29 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                   <button onClick={addSize} className="px-3 py-2 bg-zinc-100 rounded-lg text-sm hover:bg-zinc-200 cursor-pointer">
                     <Plus className="w-4 h-4" />
                   </button>
+                </div>
+                <div className="mt-2">
+                  <p className="text-xs text-zinc-400 mb-1.5">
+                    {isRtl ? "أزرار سريعة (ملابس):" : "Quick presets (clothing):"}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["XS", "S", "M", "L", "XL", "XXL"].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          if (!(form.sizes || []).includes(s)) addSizePreset(s)
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-xs border transition-colors cursor-pointer ${
+                          (form.sizes || []).includes(s)
+                            ? "bg-[#f97316]/10 border-[#f97316] text-[#f97316]"
+                            : "border-zinc-200 text-zinc-600 hover:border-[#f97316] hover:text-[#f97316]"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

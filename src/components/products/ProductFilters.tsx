@@ -49,33 +49,79 @@ export default function ProductFilters({
 
   const sectionTitle = "text-xs font-medium text-zinc-400 uppercase mb-2"
 
-  const categoryList = (onNavigate?: () => void) => (
-    <div className="space-y-1">
-      <Link
-        href={buildUrl({ category: "" })}
-        onClick={onNavigate}
-        className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-          !activeCategory ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
-        }`}
-      >
-        {isRtl ? "الكل" : "All"}
-      </Link>
-      {(categories || []).map((cat: any) => (
+  const categoryList = (onNavigate?: () => void) => {
+    const tops = (categories || [])
+      .filter((c: any) => !c.parent_id)
+      .sort((a: any, b: any) => a.sort_order - b.sort_order)
+    const kidsOf = (id: string) =>
+      (categories || [])
+        .filter((c: any) => c.parent_id === id)
+        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+    return (
+      <div className="space-y-1">
         <Link
-          key={cat.id}
-          href={buildUrl({ category: cat.slug })}
+          href={buildUrl({ category: "" })}
           onClick={onNavigate}
           className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-            activeCategory === cat.slug
-              ? "bg-accent/10 text-accent font-medium"
-              : "hover:bg-zinc-100 text-zinc-600"
+            !activeCategory ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
           }`}
         >
-          {isRtl ? cat.name_ar : cat.name_en}
+          {isRtl ? "الكل" : "All"}
         </Link>
-      ))}
-    </div>
-  )
+        {tops.map((cat: any) => {
+          const kids = kidsOf(cat.id)
+          const catActive = activeCategory === cat.slug
+          return (
+            <div key={cat.id}>
+              <Link
+                href={buildUrl({ category: cat.slug })}
+                onClick={onNavigate}
+                className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  catActive ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
+                }`}
+              >
+                {isRtl ? cat.name_ar : cat.name_en}
+              </Link>
+              {kids.length > 0 && (
+                <div className="ps-3 mt-0.5 space-y-0.5 border-s border-zinc-100">
+                  {kids.map((kid: any) => (
+                    <Link
+                      key={kid.id}
+                      href={buildUrl({ category: kid.slug })}
+                      onClick={onNavigate}
+                      className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        activeCategory === kid.slug
+                          ? "bg-accent/10 text-accent font-medium"
+                          : "hover:bg-zinc-100 text-zinc-600"
+                      }`}
+                    >
+                      {isRtl ? kid.name_ar : kid.name_en}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {(categories || [])
+          .filter((c: any) => c.parent_id && !tops.some((t: any) => t.id === c.parent_id))
+          .map((kid: any) => (
+            <Link
+              key={kid.id}
+              href={buildUrl({ category: kid.slug })}
+              onClick={onNavigate}
+              className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                activeCategory === kid.slug
+                  ? "bg-accent/10 text-accent font-medium"
+                  : "hover:bg-zinc-100 text-zinc-600"
+              }`}
+            >
+              {isRtl ? kid.name_ar : kid.name_en}
+            </Link>
+          ))}
+      </div>
+    )
+  }
 
   const sizeList = (onNavigate?: () => void) => (
     <div className="flex flex-wrap gap-2">

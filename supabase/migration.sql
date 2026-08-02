@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name_ar TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   image_url TEXT,
+  parent_id UUID REFERENCES categories(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

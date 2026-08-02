@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, useMemo } from "react"
 import Image from "next/image"
 import { Plus, Pencil, Trash2, X, ArrowUp, ArrowDown, Loader2, Upload, Image as ImageIcon, Check, FileIcon } from "lucide-react"
 import toast from "react-hot-toast"
@@ -14,6 +14,7 @@ const defaultCat: Partial<ProductCategory> = {
   image_url: "",
   active: true,
   sort_order: 0,
+  parent_id: null,
 }
 
 export default function AdminCategoriesPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
@@ -30,6 +31,16 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
   const [uploading, setUploading] = useState(false)
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const topLevel = useMemo(() => categories.filter((c) => !c.parent_id), [categories])
+  const childrenOf = useMemo(() => {
+    const map: Record<string, ProductCategory[]> = {}
+    for (const c of categories) {
+      if (!c.parent_id) continue
+      ;(map[c.parent_id] ||= []).push(c)
+    }
+    return map
+  }, [categories])
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
@@ -92,13 +103,18 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
 
   const openEdit = (cat: ProductCategory) => {
     setEditing(cat)
-    setForm({ ...cat })
+    setForm({ ...cat, parent_id: cat.parent_id ?? null })
     setModalOpen(true)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
+      if (form.parent_id && form.parent_id === editing?.id) {
+        toast.error(isRtl ? "لا يمكن أن يكون التصنيف أباً لنفسه" : "Category cannot be its own parent")
+        setSaving(false)
+        return
+      }
       const url = editing ? `/api/admin/categories/${editing.id}` : "/api/admin/categories"
       const method = editing ? "PUT" : "POST"
       const res = await fetch(url, {
@@ -120,6 +136,12 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
 
   const handleDelete = async () => {
     if (!deleteId) return
+    const hasChildren = categories.some((c) => c.parent_id === deleteId)
+    if (hasChildren) {
+      toast.error(isRtl ? "لا يمكن حذف تصنيف يحتوي على تصنيفات فرعية" : "Cannot delete a category that has subcategories")
+      setDeleteId(null)
+      return
+    }
     try {
       const res = await fetch(`/api/admin/categories/${deleteId}`, { method: "DELETE" })
       const data = await res.json()
@@ -181,6 +203,17 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
     })
   }
 
+  const catName = (c: ProductCategory) => (isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar)
+
+  const displayRows: { cat: ProductCategory; depth: number }[] = []
+  for (const top of topLevel.sort((a, b) => a.sort_order - b.sort_order)) {
+    displayRows.push({ cat: top, depth: 0 })
+    const kids = (childrenOf[top.id] || []).sort((a, b) => a.sort_order - b.sort_order)
+    for (const kid of kids) displayRows.push({ cat: kid, depth: 1 })
+  }
+  const orphans = categories.filter((c) => c.parent_id && !topLevel.some((t) => t.id === c.parent_id))
+  for (const o of orphans) displayRows.push({ cat: o, depth: 0 })
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -209,6 +242,7 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
               <tr>
                 <th className="w-16 px-4 py-3 font-medium text-zinc-500">{isRtl ? "ترتيب" : "Order"}</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الاسم" : "Name"}</th>
+                <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الأب" : "Parent"}</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الصورة" : "Image"}</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">Slug</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-500">{isRtl ? "الحالة" : "Active"}</th>
@@ -216,28 +250,28 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {categories.length === 0 ? (
+              {displayRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-zinc-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-zinc-400">
                     {isRtl ? "لا توجد تصنيفات" : "No categories"}
                   </td>
                 </tr>
               ) : (
-                categories.map((cat, index) => (
+                displayRows.map(({ cat, depth }) => (
                   <tr key={cat.id} className="hover:bg-zinc-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => moveUp(index)}
-                          disabled={index === 0}
+                          onClick={() => moveUp(categories.findIndex((c) => c.id === cat.id))}
+                          disabled={categories.findIndex((c) => c.id === cat.id) === 0}
                           className="p-0.5 hover:bg-zinc-100 rounded disabled:opacity-30 cursor-pointer"
                         >
                           <ArrowUp className="w-3.5 h-3.5 text-zinc-400" />
                         </button>
                         <span className="text-xs text-zinc-400 w-4 text-center">{cat.sort_order}</span>
                         <button
-                          onClick={() => moveDown(index)}
-                          disabled={index === categories.length - 1}
+                          onClick={() => moveDown(categories.findIndex((c) => c.id === cat.id))}
+                          disabled={categories.findIndex((c) => c.id === cat.id) === categories.length - 1}
                           className="p-0.5 hover:bg-zinc-100 rounded disabled:opacity-30 cursor-pointer"
                         >
                           <ArrowDown className="w-3.5 h-3.5 text-zinc-400" />
@@ -245,7 +279,18 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                       </div>
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {isRtl ? cat.name_ar || cat.name_en : cat.name_en || cat.name_ar}
+                      <span style={{ paddingInlineStart: depth * 18 }} className="inline-flex items-center gap-1.5">
+                        {depth === 1 && <span className="text-zinc-300">└─</span>}
+                        {catName(cat)}
+                        {depth === 1 && (
+                          <span className="px-1.5 py-0.5 rounded bg-zinc-100 text-[10px] text-zinc-500">
+                            {isRtl ? "فرعي" : "Sub"}
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-500">
+                      {cat.parent_id ? catName(categories.find((c) => c.id === cat.parent_id)!) : "-"}
                     </td>
                     <td className="px-4 py-3">
                       {cat.image_url ? (
@@ -296,12 +341,12 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
       </div>
 
       <div className="md:hidden space-y-3">
-        {categories.length === 0 ? (
+        {displayRows.length === 0 ? (
           <div className="bg-white rounded-xl border border-zinc-200 p-12 text-center text-zinc-400">
             {isRtl ? "لا توجد تصنيفات" : "No categories"}
           </div>
         ) : (
-          categories.map((cat, index) => (
+          displayRows.map(({ cat }) => (
             <div key={cat.id} className="bg-white rounded-xl border border-zinc-200 p-4">
               <div className="flex items-start gap-3">
                 <div className="w-16 h-10 rounded-lg overflow-hidden border border-zinc-200 bg-zinc-100 shrink-0 relative">
@@ -314,14 +359,18 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">
-                    {isRtl ? cat.name_ar || cat.name_en : cat.name_en || cat.name_ar}
-                  </p>
+                  <p className="font-medium text-sm truncate">{catName(cat)}</p>
                   <p className="text-xs text-zinc-400 truncate">/{cat.slug}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[11px] text-zinc-400">
-                      {isRtl ? "ترتيب:" : "Order:"} {cat.sort_order}
-                    </span>
+                    {cat.parent_id ? (
+                      <span className="px-1.5 py-0.5 rounded bg-zinc-100 text-[10px] text-zinc-500">
+                        {isRtl ? "فرعي" : "Sub"} · {catName(categories.find((c) => c.id === cat.parent_id)!)}
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded bg-zinc-100 text-[10px] text-zinc-500">
+                        {isRtl ? "رئيسي" : "Top"}
+                      </span>
+                    )}
                     <button
                       onClick={() => toggleActive(cat)}
                       className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer ${
@@ -339,16 +388,16 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
               </div>
               <div className="flex gap-2 mt-3">
                 <button
-                  onClick={() => moveUp(index)}
-                  disabled={index === 0}
+                  onClick={() => moveUp(categories.findIndex((c) => c.id === cat.id))}
+                  disabled={categories.findIndex((c) => c.id === cat.id) === 0}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-medium hover:bg-zinc-200 disabled:opacity-40 transition-colors cursor-pointer"
                 >
                   <ArrowUp className="w-3.5 h-3.5" />
                   {isRtl ? "أعلى" : "Up"}
                 </button>
                 <button
-                  onClick={() => moveDown(index)}
-                  disabled={index === categories.length - 1}
+                  onClick={() => moveDown(categories.findIndex((c) => c.id === cat.id))}
+                  disabled={categories.findIndex((c) => c.id === cat.id) === categories.length - 1}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-medium hover:bg-zinc-200 disabled:opacity-40 transition-colors cursor-pointer"
                 >
                   <ArrowDown className="w-3.5 h-3.5" />
@@ -417,6 +466,30 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
                   className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  {isRtl ? "التصنيف الأب (اختياري)" : "Parent Category (optional)"}
+                </label>
+                <select
+                  value={form.parent_id || ""}
+                  onChange={(e) => setForm({ ...form, parent_id: e.target.value || null })}
+                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
+                >
+                  <option value="">{isRtl ? "— بدون (تصنيف رئيسي) —" : "— None (top-level) —"}</option>
+                  {topLevel
+                    .filter((c) => c.id !== editing?.id)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-zinc-400 mt-1">
+                  {isRtl
+                    ? "اختر تصنيفاً رئيسياً لجعل هذا تصنيفاً فرعياً (مثال: ملابس ← بناطيل)"
+                    : "Pick a top-level category to make this a subcategory (e.g. Clothing → Pants)"}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-2">

@@ -179,7 +179,7 @@ async function CategoriesSection({ locale }: { locale: string }) {
     sports: "from-orange-900 to-orange-700",
   }
 
-  const displayCats = categories || []
+  const displayCats = (categories || []).filter((c: any) => !c.parent_id)
 
   return (
     <section className="py-16 bg-zinc-50">

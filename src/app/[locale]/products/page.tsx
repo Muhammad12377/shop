@@ -11,6 +11,15 @@ import { groupBySku } from "@/lib/group-products"
 
 const PAGE_SIZE = 24
 
+function useMemoCategoryIds(categories: any[], activeId?: string): string[] | undefined {
+  if (!activeId) return undefined
+  const ids = [activeId]
+  for (const c of categories || []) {
+    if (c.parent_id === activeId) ids.push(c.id)
+  }
+  return ids
+}
+
 type Props = {
   params: Promise<{ locale: string }>
   searchParams: Promise<{ q?: string; category?: string; sort?: string; size?: string; page?: string }>
@@ -37,11 +46,13 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   const categories = await getCachedCategories()
   const activeCat = category && category !== "all" ? categories.find((c: any) => c.slug === category) : undefined
 
-  const sizes = await getCachedAllSizes(activeCat?.id)
+  const categoryIds = useMemoCategoryIds(categories, activeCat?.id)
+
+  const sizes = await getCachedAllSizes(categoryIds)
 
   const { products, total } = await getCachedProducts({
     q,
-    categoryId: activeCat?.id,
+    categoryIds,
     sort,
     sizes: selectedSizes,
     page,
