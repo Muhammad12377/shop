@@ -14,8 +14,15 @@ const PAGE_SIZE = 24
 function useMemoCategoryIds(categories: any[], activeId?: string): string[] | undefined {
   if (!activeId) return undefined
   const ids = [activeId]
-  for (const c of categories || []) {
-    if (c.parent_id === activeId) ids.push(c.id)
+  const stack = [activeId]
+  while (stack.length) {
+    const cur = stack.pop()!
+    for (const c of categories || []) {
+      if (c.parent_id === cur && !ids.includes(c.id)) {
+        ids.push(c.id)
+        stack.push(c.id)
+      }
+    }
   }
   return ids
 }

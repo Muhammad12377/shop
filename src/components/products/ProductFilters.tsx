@@ -50,13 +50,35 @@ export default function ProductFilters({
   const sectionTitle = "text-xs font-medium text-zinc-400 uppercase mb-2"
 
   const categoryList = (onNavigate?: () => void) => {
+    const renderNode = (cat: any, depth: number): React.ReactNode => {
+      const kids = (categories || [])
+        .filter((c: any) => c.parent_id === cat.id)
+        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+      const catActive = activeCategory === cat.slug
+      return (
+        <div key={cat.id}>
+          <Link
+            href={buildUrl({ category: cat.slug })}
+            onClick={onNavigate}
+            className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              catActive ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
+            }`}
+          >
+            {isRtl ? cat.name_ar : cat.name_en}
+          </Link>
+          {kids.length > 0 && (
+            <div className="ps-3 mt-0.5 space-y-0.5 border-s border-zinc-100">
+              {kids.map((kid: any) => renderNode(kid, depth + 1))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
     const tops = (categories || [])
       .filter((c: any) => !c.parent_id)
       .sort((a: any, b: any) => a.sort_order - b.sort_order)
-    const kidsOf = (id: string) =>
-      (categories || [])
-        .filter((c: any) => c.parent_id === id)
-        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+
     return (
       <div className="space-y-1">
         <Link
@@ -68,57 +90,10 @@ export default function ProductFilters({
         >
           {isRtl ? "الكل" : "All"}
         </Link>
-        {tops.map((cat: any) => {
-          const kids = kidsOf(cat.id)
-          const catActive = activeCategory === cat.slug
-          return (
-            <div key={cat.id}>
-              <Link
-                href={buildUrl({ category: cat.slug })}
-                onClick={onNavigate}
-                className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  catActive ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
-                }`}
-              >
-                {isRtl ? cat.name_ar : cat.name_en}
-              </Link>
-              {kids.length > 0 && (
-                <div className="ps-3 mt-0.5 space-y-0.5 border-s border-zinc-100">
-                  {kids.map((kid: any) => (
-                    <Link
-                      key={kid.id}
-                      href={buildUrl({ category: kid.slug })}
-                      onClick={onNavigate}
-                      className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                        activeCategory === kid.slug
-                          ? "bg-accent/10 text-accent font-medium"
-                          : "hover:bg-zinc-100 text-zinc-600"
-                      }`}
-                    >
-                      {isRtl ? kid.name_ar : kid.name_en}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {tops.map((cat: any) => renderNode(cat, 0))}
         {(categories || [])
           .filter((c: any) => c.parent_id && !tops.some((t: any) => t.id === c.parent_id))
-          .map((kid: any) => (
-            <Link
-              key={kid.id}
-              href={buildUrl({ category: kid.slug })}
-              onClick={onNavigate}
-              className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                activeCategory === kid.slug
-                  ? "bg-accent/10 text-accent font-medium"
-                  : "hover:bg-zinc-100 text-zinc-600"
-              }`}
-            >
-              {isRtl ? kid.name_ar : kid.name_en}
-            </Link>
-          ))}
+          .map((kid: any) => renderNode(kid, 0))}
       </div>
     )
   }

@@ -205,14 +205,55 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
 
   const catName = (c: ProductCategory) => (isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar)
 
-  const displayRows: { cat: ProductCategory; depth: number }[] = []
-  for (const top of topLevel.sort((a, b) => a.sort_order - b.sort_order)) {
-    displayRows.push({ cat: top, depth: 0 })
-    const kids = (childrenOf[top.id] || []).sort((a, b) => a.sort_order - b.sort_order)
-    for (const kid of kids) displayRows.push({ cat: kid, depth: 1 })
+  const descendantsOf = (id: string): Set<string> => {
+    const out = new Set<string>()
+    const stack = [id]
+    while (stack.length) {
+      const cur = stack.pop()!
+      for (const c of categories) {
+        if (c.parent_id === cur && !out.has(c.id)) {
+          out.add(c.id)
+          stack.push(c.id)
+        }
+      }
+    }
+    return out
   }
-  const orphans = categories.filter((c) => c.parent_id && !topLevel.some((t) => t.id === c.parent_id))
-  for (const o of orphans) displayRows.push({ cat: o, depth: 0 })
+
+  const parentOptions = useMemo(() => {
+    const excluded = new Set<string>()
+    if (editing) {
+      excluded.add(editing.id)
+      for (const d of descendantsOf(editing.id)) excluded.add(d)
+    }
+    const rows: { cat: ProductCategory; depth: number }[] = []
+    const build = (id: string | null, depth: number) => {
+      const kids = categories
+        .filter((c) => (id ? c.parent_id === id : !c.parent_id))
+        .sort((a, b) => a.sort_order - b.sort_order)
+      for (const k of kids) {
+        if (excluded.has(k.id)) continue
+        rows.push({ cat: k, depth })
+        build(k.id, depth + 1)
+      }
+    }
+    build(null, 0)
+    return rows
+  }, [categories, editing])
+
+  const displayRows: { cat: ProductCategory; depth: number }[] = []
+  {
+    const build = (id: string | null, depth: number) => {
+      const kids = categories
+        .filter((c) => (id ? c.parent_id === id : !c.parent_id))
+        .sort((a, b) => a.sort_order - b.sort_order)
+      for (const k of kids) {
+        displayRows.push({ cat: k, depth })
+        build(k.id, depth + 1)
+      }
+    }
+    build(null, 0)
+  }
 
   if (loading) {
     return (
@@ -280,9 +321,9 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                     </td>
                     <td className="px-4 py-3 font-medium">
                       <span style={{ paddingInlineStart: depth * 18 }} className="inline-flex items-center gap-1.5">
-                        {depth === 1 && <span className="text-zinc-300">└─</span>}
+                        {depth > 0 && <span className="text-zinc-300">{"└─"}</span>}
                         {catName(cat)}
-                        {depth === 1 && (
+                        {depth > 0 && (
                           <span className="px-1.5 py-0.5 rounded bg-zinc-100 text-[10px] text-zinc-500">
                             {isRtl ? "فرعي" : "Sub"}
                           </span>
@@ -477,13 +518,13 @@ export default function AdminCategoriesPage({ params: paramsPromise }: { params:
                   className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/20 focus:border-[#f97316]"
                 >
                   <option value="">{isRtl ? "— بدون (تصنيف رئيسي) —" : "— None (top-level) —"}</option>
-                  {topLevel
-                    .filter((c) => c.id !== editing?.id)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar}
-                      </option>
-                    ))}
+                  {parentOptions.map(({ cat, depth }) => (
+                    <option key={cat.id} value={cat.id}>
+                      {"\u00A0\u00A0".repeat(depth)}
+                      {depth > 0 ? "↳ " : ""}
+                      {catName(cat)}
+                    </option>
+                  ))}
                 </select>
                 <p className="text-xs text-zinc-400 mt-1">
                   {isRtl

@@ -57,15 +57,17 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     c ? (isRtl ? c.name_ar || c.name_en : c.name_en || c.name_ar) : ""
 
   const categoryOptions = useMemo(() => {
-    const tops = categories.filter((c) => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order)
-    const kidsOf = (id: string) => categories.filter((c) => c.parent_id === id).sort((a, b) => a.sort_order - b.sort_order)
-    const opts: { id: string; label: string; parent: boolean }[] = []
-    for (const t of tops) {
-      opts.push({ id: t.id, label: catName(t), parent: true })
-      for (const k of kidsOf(t.id)) opts.push({ id: k.id, label: `— ${catName(k)}`, parent: false })
+    const opts: { id: string; label: string }[] = []
+    const build = (id: string | null, depth: number) => {
+      const kids = categories
+        .filter((c) => (id ? c.parent_id === id : !c.parent_id))
+        .sort((a, b) => a.sort_order - b.sort_order)
+      for (const k of kids) {
+        opts.push({ id: k.id, label: `${"  ".repeat(depth)}${depth > 0 ? "↳ " : ""}${catName(k)}` })
+        build(k.id, depth + 1)
+      }
     }
-    for (const o of categories.filter((c) => c.parent_id && !tops.some((t) => t.id === c.parent_id)))
-      opts.push({ id: o.id, label: catName(o), parent: false })
+    build(null, 0)
     return opts
   }, [categories, isRtl])
 
