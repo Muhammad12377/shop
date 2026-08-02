@@ -6,6 +6,7 @@ import { ShoppingCart, Menu, X, Search, User, Package, Heart, ChevronDown, LogOu
 import { Link, usePathname, useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
+import CategoryMenu from "@/components/layout/CategoryMenu"
 
 export default function Header() {
   const t = useTranslations("nav")
@@ -81,6 +82,7 @@ export default function Header() {
             <Link href="/" className="text-sm font-medium hover:text-accent transition-colors">
               {t("home")}
             </Link>
+            <CategoryMenu />
             <Link href="/products" className="text-sm font-medium hover:text-accent transition-colors">
               {t("products")}
             </Link>
@@ -249,6 +251,9 @@ export default function Header() {
           </div>
 
           <nav className="flex-1 overflow-y-auto py-2">
+            <div className="px-4 py-2">
+              <CategoryMenu />
+            </div>
             <Link
               href="/"
               onClick={() => setMenuOpen(false)}

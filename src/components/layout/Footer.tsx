@@ -1,14 +1,26 @@
 "use client"
 
 import { useTranslations, useLocale } from "next-intl"
+import { useEffect, useState } from "react"
 import { Link } from "@/lib/i18n/navigation"
 import { Globe, Mail, MapPin } from "lucide-react"
+import type { ProductCategory } from "@/types"
 
 export default function Footer({ locale }: { locale: string }) {
   const t = useTranslations("nav")
   const ht = useTranslations("home")
   const ctxLocale = useLocale()
   const isRtl = (locale || ctxLocale) === "ar"
+  const [sections, setSections] = useState<ProductCategory[]>([])
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSections(data.filter((c: any) => !c.parent_id))
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <footer className="bg-primary text-zinc-400 mt-auto">
@@ -28,10 +40,21 @@ export default function Footer({ locale }: { locale: string }) {
           <div>
             <h4 className="text-white font-medium mb-4">{t("products")}</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/products?category=men" className="hover:text-accent transition-colors">{ht("men")}</Link></li>
-              <li><Link href="/products?category=women" className="hover:text-accent transition-colors">{ht("women")}</Link></li>
-              <li><Link href="/products?category=kids" className="hover:text-accent transition-colors">{ht("kids")}</Link></li>
-              <li><Link href="/products?category=sports" className="hover:text-accent transition-colors">{ht("sports")}</Link></li>
+              {sections.length > 0 ? (
+                sections.map((cat) => (
+                  <li key={cat.id}>
+                    <Link href={`/category/${cat.slug}`} className="hover:text-accent transition-colors">
+                      {isRtl ? cat.name_ar || cat.name_en : cat.name_en || cat.name_ar}
+                    </Link>
+                  </li>
+                ))
+              ) : (
+                <>
+                  <li><Link href="/products?category=men" className="hover:text-accent transition-colors">{ht("men")}</Link></li>
+                  <li><Link href="/products?category=women" className="hover:text-accent transition-colors">{ht("women")}</Link></li>
+                  <li><Link href="/products?category=sports" className="hover:text-accent transition-colors">{ht("sports")}</Link></li>
+                </>
+              )}
             </ul>
           </div>
 

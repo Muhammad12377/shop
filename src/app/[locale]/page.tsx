@@ -177,6 +177,13 @@ async function CategoriesSection({ locale }: { locale: string }) {
     women: "from-pink-900 to-pink-700",
     kids: "from-green-900 to-green-700",
     sports: "from-orange-900 to-orange-700",
+    shoes: "from-blue-900 to-blue-700",
+    sweaters: "from-pink-900 to-pink-700",
+    pants: "from-green-900 to-green-700",
+    "t-shirts": "from-sky-900 to-sky-700",
+    jackets: "from-zinc-900 to-zinc-700",
+    shorts: "from-amber-900 to-amber-700",
+    accessories: "from-violet-900 to-violet-700",
   }
 
   const displayCats = (categories || []).filter((c: any) => !c.parent_id)
@@ -192,7 +199,7 @@ async function CategoriesSection({ locale }: { locale: string }) {
           {displayCats.map((cat: any, i: number) => (
             <Reveal key={cat.id || i} delay={i * 120} stagger>
               <Link
-                href={`/products?category=${cat.slug}`}
+                href={`/category/${cat.slug}`}
                 locale={locale}
                 className={`relative h-48 rounded-2xl overflow-hidden group block ${
                   cat.image_url
