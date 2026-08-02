@@ -7,6 +7,7 @@ import { routing } from "@/lib/i18n/routing"
 import { Toaster } from "react-hot-toast"
 import BlockedWatcher from "@/components/auth/BlockedWatcher"
 import CartSync from "@/components/cart/CartSync"
+import ForceRefresh from "@/components/layout/ForceRefresh"
 import PageTransition from "@/components/motion/PageTransition"
 import "../globals.css"
 
@@ -48,6 +49,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html lang={locale} dir={isRtl ? "rtl" : "ltr"} className={geist.className}>
       <body className="min-h-screen flex flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <ForceRefresh />
           <BlockedWatcher />
           <CartSync />
           <PageTransition>{children}</PageTransition>
