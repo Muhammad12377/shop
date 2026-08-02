@@ -26,7 +26,6 @@ export const useCartStore = create<CartStore>()(
     (set, get) => {
       const sync = () => {
         const items = get().items
-        if (items.length === 0) return
         fetch("/api/cart", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
