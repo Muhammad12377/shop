@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   let matchedIds: string[] | null = null
   if (category) {
-    const { data: cats } = await supabase.from("categories").select("id, parent_id").eq("active", true)
+    const { data: cats } = await supabase.from("categories").select("id, slug, parent_id").eq("active", true)
     const cat = (cats || []).find((c: any) => c.slug === category)
     if (cat) {
       const ids = [cat.id]
