@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Link } from "@/lib/i18n/navigation"
-import { SlidersHorizontal, X, RotateCcw } from "lucide-react"
+import { SlidersHorizontal, X, RotateCcw, ChevronDown, ChevronRight } from "lucide-react"
 
 type Props = {
   categories: any[]
@@ -26,6 +26,7 @@ export default function ProductFilters({
   isRtl,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const sizeParam = activeSizes.join(",")
   const activeCount = (activeCategory ? 1 : 0) + activeSizes.length + (sort && sort !== "newest" ? 1 : 0)
 
@@ -50,34 +51,56 @@ export default function ProductFilters({
   const sectionTitle = "text-xs font-medium text-zinc-400 uppercase mb-2"
 
   const categoryList = (onNavigate?: () => void) => {
-    const renderNode = (cat: any, depth: number): React.ReactNode => {
+    const tops = (categories || [])
+      .filter((c: any) => !c.parent_id)
+      .sort((a: any, b: any) => a.sort_order - b.sort_order)
+
+    const nodeActive = (cat: any) =>
+      activeCategory === cat.slug ||
+      (categories || []).some((c: any) => c.parent_id === cat.id && activeCategory === c.slug)
+
+    const renderKids = (cat: any) => {
       const kids = (categories || [])
         .filter((c: any) => c.parent_id === cat.id)
         .sort((a: any, b: any) => a.sort_order - b.sort_order)
-      const catActive = activeCategory === cat.slug
+      if (kids.length === 0) return null
+      const isOpen = expandedCat === cat.id || nodeActive(cat)
       return (
-        <div key={cat.id}>
-          <Link
-            href={buildUrl({ category: cat.slug })}
-            onClick={onNavigate}
-            className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              catActive ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
-            }`}
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setExpandedCat(isOpen ? null : cat.id)
+            }}
+            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-accent transition-colors px-3"
+            aria-expanded={isOpen}
           >
-            {isRtl ? cat.name_ar : cat.name_en}
-          </Link>
-          {kids.length > 0 && (
-            <div className="ps-3 mt-0.5 space-y-0.5 border-s border-zinc-100">
-              {kids.map((kid: any) => renderNode(kid, depth + 1))}
+            {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {isRtl ? "الأصناف الفرعية" : "Subcategories"}
+          </button>
+          {isOpen && (
+            <div className="ps-2 mt-0.5 space-y-0.5 border-s border-zinc-100">
+              {kids.map((kid: any) => {
+                const kidActive = activeCategory === kid.slug
+                return (
+                  <Link
+                    key={kid.id}
+                    href={buildUrl({ category: kid.slug })}
+                    onClick={onNavigate}
+                    className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                      kidActive ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
+                    }`}
+                  >
+                    {isRtl ? kid.name_ar : kid.name_en}
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>
       )
     }
-
-    const tops = (categories || [])
-      .filter((c: any) => !c.parent_id)
-      .sort((a: any, b: any) => a.sort_order - b.sort_order)
 
     return (
       <div className="space-y-1">
@@ -90,10 +113,38 @@ export default function ProductFilters({
         >
           {isRtl ? "الكل" : "All"}
         </Link>
-        {tops.map((cat: any) => renderNode(cat, 0))}
+        {tops.map((cat: any) => {
+          const catActive = activeCategory === cat.slug
+          const active = nodeActive(cat.id)
+          return (
+            <div key={cat.id}>
+              <Link
+                href={buildUrl({ category: cat.slug })}
+                onClick={onNavigate}
+                className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  catActive ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
+                }`}
+              >
+                {isRtl ? cat.name_ar : cat.name_en}
+              </Link>
+              {renderKids(cat)}
+            </div>
+          )
+        })}
         {(categories || [])
           .filter((c: any) => c.parent_id && !tops.some((t: any) => t.id === c.parent_id))
-          .map((kid: any) => renderNode(kid, 0))}
+          .map((kid: any) => (
+            <Link
+              key={kid.id}
+              href={buildUrl({ category: kid.slug })}
+              onClick={onNavigate}
+              className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                activeCategory === kid.slug ? "bg-accent/10 text-accent font-medium" : "hover:bg-zinc-100 text-zinc-600"
+              }`}
+            >
+              {isRtl ? kid.name_ar : kid.name_en}
+            </Link>
+          ))}
       </div>
     )
   }

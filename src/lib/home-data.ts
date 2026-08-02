@@ -40,7 +40,7 @@ export const getCachedHomeProducts = unstable_cache(
   async () => {
     const { data: featured } = await client
       .from("products")
-      .select("*, category:categories(*)")
+      .select("*, category:categories!products_category_id_fkey(*)")
       .eq("active", true)
       .eq("featured", true)
       .order("created_at", { ascending: false })
@@ -50,7 +50,7 @@ export const getCachedHomeProducts = unstable_cache(
 
     const { data: latest } = await client
       .from("products")
-      .select("*, category:categories(*)")
+      .select("*, category:categories!products_category_id_fkey(*)")
       .eq("active", true)
       .order("created_at", { ascending: false })
       .limit(4)
@@ -65,7 +65,7 @@ export const getCachedProduct = unstable_cache(
   async (id: string) => {
     const { data } = await client
       .from("products")
-      .select("*, category:categories(*)")
+      .select("*, category:categories!products_category_id_fkey(*)")
       .eq("id", id)
       .single()
     return data
@@ -133,7 +133,7 @@ export const getCachedProducts = unstable_cache(
 
     let query = client
       .from("products")
-      .select("*, category:categories(*)", { count: "exact" })
+      .select("*, category:categories!products_category_id_fkey(*)", { count: "exact" })
       .eq("active", true)
 
     if (matchedIds) {

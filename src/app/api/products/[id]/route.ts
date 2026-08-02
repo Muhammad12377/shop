@@ -8,7 +8,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data, error } = await supabase
     .from("products")
-    .select("*, category:categories(*)")
+    .select("*, category:categories!products_category_id_fkey(*)")
     .eq("id", id)
     .eq("active", true)
     .single()

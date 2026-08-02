@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("products")
-    .select("*, category:categories(*)")
+    .select("*, category:categories!products_category_id_fkey(*)")
     .eq("active", true)
 
   if (matchedIds) {

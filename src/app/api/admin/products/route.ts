@@ -25,7 +25,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("products")
-      .select("*, category:categories(*), product_categories:product_categories(category_id)")
+      .select("*, category:categories!products_category_id_fkey(*), product_categories:product_categories(category_id)")
       .order("created_at", { ascending: false })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
