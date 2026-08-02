@@ -44,7 +44,7 @@ export const getCachedHomeProducts = unstable_cache(
       .eq("active", true)
       .eq("featured", true)
       .order("created_at", { ascending: false })
-      .limit(4)
+      .limit(50)
 
     if (featured && featured.length > 0) return featured
 
