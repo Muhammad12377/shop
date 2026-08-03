@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
+import { Link } from "@/lib/i18n/navigation"
 import { splitColors, colorLabel } from "@/lib/colors"
 
 export default function ProductCard({
@@ -33,7 +33,6 @@ export default function ProductCard({
     <div className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 hover:border-accent/40 hover:shadow-xl hover:shadow-accent/10 hover:-translate-y-1.5 transition-all duration-300 will-change-transform">
       <Link
         href={`/product/${active?.id}`}
-        locale={locale}
         className="relative block aspect-[4/5] bg-gradient-to-br from-zinc-200 to-zinc-300 overflow-hidden"
       >
         {active?.images?.[0] ? (
@@ -73,7 +72,7 @@ export default function ProductCard({
           </p>
           <p className="text-accent font-bold text-base sm:text-lg">${active?.price}</p>
         </div>
-        <Link href={`/product/${active?.id}`} locale={locale} className="block">
+        <Link href={`/product/${active?.id}`} className="block">
           <h3 className="font-medium text-sm sm:text-lg group-hover:text-accent transition-colors truncate">
             {name}
           </h3>
