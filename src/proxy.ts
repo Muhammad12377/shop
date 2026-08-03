@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const SUPABASE_AUTH_COOKIE = "sb-abuhwixkskepdpqtsdsg-auth-token"
+const LOCALES = ["en", "ar"]
+const DEFAULT_LOCALE = "en"
 
 function isAdminPath(pathname: string): boolean {
   return pathname.includes("/admin")
@@ -8,6 +10,11 @@ function isAdminPath(pathname: string): boolean {
 
 function isAdminApi(pathname: string): boolean {
   return pathname.startsWith("/api/admin") || pathname.startsWith("/admin/")
+}
+
+function detectLocale(pathname: string): string {
+  const first = pathname.split("/")[1]
+  return LOCALES.includes(first) ? first : DEFAULT_LOCALE
 }
 
 export function proxy(request: NextRequest) {
@@ -26,7 +33,8 @@ export function proxy(request: NextRequest) {
         { status: 401, headers: { "content-type": "application/json" } }
       )
     }
-    return NextResponse.redirect(new URL("/auth", origin))
+    const locale = detectLocale(pathname)
+    return NextResponse.redirect(new URL(`/${locale}/auth`, origin))
   }
 
   return NextResponse.next()
