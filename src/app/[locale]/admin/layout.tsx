@@ -14,7 +14,7 @@ export default async function AdminLayout({ children, params }: Props) {
 
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/auth")
+  if (!user) redirect(`/${locale}/auth`)
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -22,7 +22,7 @@ export default async function AdminLayout({ children, params }: Props) {
     .eq("id", user.id)
     .single()
 
-  if (profile?.role !== "admin") redirect("/")
+  if (profile?.role !== "admin") redirect(`/${locale}`)
 
   return (
     <>

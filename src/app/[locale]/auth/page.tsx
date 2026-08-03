@@ -47,6 +47,14 @@ export default function AuthPage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
   const [otpSentAt, setOtpSentAt] = useState<string | null>(null)
+  const [nextPath, setNextPath] = useState("/")
+
+  const safeNext = (value: string | null): string => {
+    if (value && value.startsWith("/") && !value.startsWith("//")) {
+      return value
+    }
+    return "/"
+  }
 
   useEffect(() => {
     setCaptchaToken(null)
@@ -57,6 +65,7 @@ export default function AuthPage() {
     const m = params.get("mode")
     if (m === "register" || m === "forgot") setMode(m)
     if (params.has("blocked")) setBlockedNotice(true)
+    setNextPath(safeNext(params.get("next")))
   }, [])
 
   useEffect(() => {
@@ -234,7 +243,7 @@ export default function AuthPage() {
           }).catch(() => {})
         }
         toast.success(isRtl ? "تم التحقق بنجاح" : "Verified successfully")
-        router.push("/")
+        router.push(nextPath)
         router.refresh()
       }
     } catch (err: any) {
@@ -269,7 +278,7 @@ export default function AuthPage() {
       const data = await res.json()
       if (!data.ok) throw new Error(data.error || "Failed to update password")
       toast.success(isRtl ? "تم تغيير كلمة المرور بنجاح" : "Password changed successfully")
-      router.push("/")
+      router.push(nextPath)
       router.refresh()
     } catch (err: any) {
       toast.error(friendlyError(err))
@@ -308,10 +317,12 @@ export default function AuthPage() {
     const supabase = createClient()
     try {
       const l = window.location.pathname.split("/")[1] === "ar" ? "ar" : "en"
+      const goNext = safeNext(nextPath)
+      const finalNext = goNext === "/" ? `/${l}/account` : goNext.startsWith(`/${l}`) ? goNext : `/${l}${goNext}`
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback?next=/${l}/account`,
+          redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(finalNext)}`,
         },
       })
       if (error) throw error
@@ -375,7 +386,7 @@ export default function AuthPage() {
           throw err
         }
         toast.success("Welcome back!")
-        router.push("/")
+        router.push(nextPath)
         router.refresh()
       }
     } catch (err: any) {

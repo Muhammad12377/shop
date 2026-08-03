@@ -17,12 +17,12 @@ export default async function AccountLayout({ children, params }: Props) {
 
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/auth")
+  if (!user) redirect(`/${locale}/auth`)
 
   const { data: profile } = await supabase.from("profiles").select("blocked").eq("id", user.id).single()
   if (profile?.blocked) {
     await supabase.auth.signOut()
-    redirect("/auth?blocked=1")
+    redirect(`/${locale}/auth?blocked=1`)
   }
 
   return (

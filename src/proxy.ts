@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const SUPABASE_AUTH_COOKIE = "sb-abuhwixkskepdpqtsdsg-auth-token"
+const SUPABASE_AUTH_COOKIE_REGEX = /^sb-abuhwixkskepdpqtsdsg-auth-token(\.\d+)?$/
 const LOCALES = ["en", "ar"]
 const DEFAULT_LOCALE = "en"
 
@@ -17,6 +18,21 @@ function detectLocale(pathname: string): string {
   return LOCALES.includes(first) ? first : DEFAULT_LOCALE
 }
 
+function hasSessionCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some((cookie) =>
+    SUPABASE_AUTH_COOKIE_REGEX.test(cookie.name)
+  )
+}
+
+function buildAuthRedirect(request: NextRequest, locale: string): NextResponse {
+  const { pathname, origin, search } = request.nextUrl
+  const nextPath = pathname.startsWith(`/${locale}`) ? pathname : `/${locale}${pathname}`
+  const next = `${nextPath}${search || ""}`
+  return NextResponse.redirect(
+    new URL(`/${locale}/auth?next=${encodeURIComponent(next)}`, origin)
+  )
+}
+
 export function proxy(request: NextRequest) {
   const { pathname, origin } = request.nextUrl
 
@@ -24,8 +40,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const sessionCookie = request.cookies.get(SUPABASE_AUTH_COOKIE)?.value
-  if (!sessionCookie) {
+  if (!hasSessionCookie(request)) {
     const isApi = pathname.startsWith("/api/admin")
     if (isApi) {
       return NextResponse.json(
@@ -34,7 +49,7 @@ export function proxy(request: NextRequest) {
       )
     }
     const locale = detectLocale(pathname)
-    return NextResponse.redirect(new URL(`/${locale}/auth`, origin))
+    return buildAuthRedirect(request, locale)
   }
 
   return NextResponse.next()

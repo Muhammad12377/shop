@@ -18,7 +18,7 @@ export default async function OrdersPage({ params }: Props) {
 
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/auth")
+  if (!user) redirect(`/${locale}/auth`)
 
   const { data: orders } = await supabase
     .from("orders")
