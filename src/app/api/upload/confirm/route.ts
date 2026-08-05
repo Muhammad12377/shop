@@ -30,29 +30,28 @@ export async function POST(req: NextRequest) {
     const known = EXT_TYPES[ext]
     if (known) {
       const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1`
-      const metaRes = await fetch(
-        `${storageBase}/object/update/products/${path}`,
-        {
-          method: "PUT",
-          headers: {
-            apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            updates: {
-              contentType: known.type,
-              cacheControl: "3600",
+      try {
+        const metaRes = await fetch(
+          `${storageBase}/object/update/products/${path}`,
+          {
+            method: "POST",
+            headers: {
+              apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+              Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+              "Content-Type": "application/json",
             },
-          }),
-          cache: "no-store",
-        }
-      )
-      if (!metaRes.ok) {
-        return NextResponse.json(
-          { error: `Failed to set content type (${metaRes.status})` },
-          { status: 500 }
+            body: JSON.stringify({
+              updates: {
+                contentType: known.type,
+                cacheControl: "3600",
+              },
+            }),
+            cache: "no-store",
+          }
         )
+        if (!metaRes.ok) console.warn(`[upload] failed to set content type: ${metaRes.status}`)
+      } catch (err) {
+        console.warn("[upload] content-type update failed", err)
       }
     }
 
