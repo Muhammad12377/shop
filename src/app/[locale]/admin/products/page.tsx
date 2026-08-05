@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIc
 import toast from "react-hot-toast"
 import type { Product, ProductCategory, Media } from "@/types"
 import { colorBackground, colorLabel } from "@/lib/colors"
+import { directUpload } from "@/lib/direct-upload"
 import ImageCropModal from "@/components/admin/ImageCropModal"
 
 const presetColors = [
@@ -261,16 +262,22 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   const uploadMedia = async (file: File, isVideo: boolean) => {
     try {
-      const fd = new FormData()
-      fd.append("file", file)
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      let url: string
       if (isVideo) {
-        setForm({ ...form, video_url: data.url })
+        url = await directUpload(file)
+      } else {
+        const fd = new FormData()
+        fd.append("file", file)
+        const res = await fetch("/api/upload", { method: "POST", body: fd })
+        const data = await res.json()
+        if (data.error) throw new Error(data.error)
+        url = data.url
+      }
+      if (isVideo) {
+        setForm({ ...form, video_url: url })
         toast.success(isRtl ? "تم رفع الفيديو" : "Video uploaded")
       } else {
-        setForm({ ...form, images: [...(form.images || []), data.url] })
+        setForm({ ...form, images: [...(form.images || []), url] })
         toast.success(isRtl ? "تم رفع الصورة" : "Image uploaded")
       }
       fetchMedia()

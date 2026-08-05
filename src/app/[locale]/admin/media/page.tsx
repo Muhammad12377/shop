@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Upload, Trash2, Copy, Check, FileIcon, Loader2 } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Media } from "@/types"
+import { directUpload } from "@/lib/direct-upload"
 import ImageCropModal from "@/components/admin/ImageCropModal"
 
 export default function AdminMediaPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
@@ -66,11 +67,17 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   const uploadFile = async (file: File) => {
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-      const res = await fetch("/api/upload", { method: "POST", body: formData })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      let url: string
+      if (file.type.startsWith("video/")) {
+        url = await directUpload(file)
+      } else {
+        const formData = new FormData()
+        formData.append("file", file)
+        const res = await fetch("/api/upload", { method: "POST", body: formData })
+        const data = await res.json()
+        if (data.error) throw new Error(data.error)
+        url = data.url
+      }
       toast.success(isRtl ? "تم الرفع" : "Uploaded")
       fetchMedia()
     } catch (err: any) {
@@ -129,7 +136,7 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/mp4,video/webm,video/quicktime"
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -165,7 +172,7 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
                 ? isRtl ? "أفلت الصورة هنا" : "Drop the image here"
                 : isRtl ? "اسحب وأفلت صورة هنا أو اضغط للاختيار" : "Drag and drop an image here, or click to select"}
             </p>
-            <p className="text-xs text-zinc-400">{isRtl ? "JPG, PNG, WEBP, GIF" : "JPG, PNG, WEBP, GIF"}</p>
+            <p className="text-xs text-zinc-400">{isRtl ? "JPG, PNG, WEBP, GIF, MP4, WEBM, MOV" : "JPG, PNG, WEBP, GIF, MP4, WEBM, MOV"}</p>
           </div>
         )}
       </div>
