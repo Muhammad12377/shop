@@ -5,8 +5,8 @@ import Image from "next/image"
 import { Upload, Trash2, Copy, Check, FileIcon, Loader2 } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Media } from "@/types"
-import { directUpload } from "@/lib/direct-upload"
 import ImageCropModal from "@/components/admin/ImageCropModal"
+import UploadDialog from "@/components/admin/UploadDialog"
 
 export default function AdminMediaPage({ params: paramsPromise }: { params: Promise<{ locale: string }> }) {
   const [locale, setLocale] = useState("en")
@@ -17,6 +17,10 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [uploadDialog, setUploadDialog] = useState<{ open: boolean; file: File | null }>({
+    open: false,
+    file: null,
+  })
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
@@ -40,7 +44,7 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
     const file = e.target.files?.[0]
     if (!file) return
     if (file.type.startsWith("video/")) {
-      uploadFile(file)
+      setUploadDialog({ open: true, file })
     } else {
       setPendingFile(file)
     }
@@ -53,7 +57,7 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
     const file = e.dataTransfer.files?.[0]
     if (!file) return
     if (file.type.startsWith("video/")) {
-      uploadFile(file)
+      setUploadDialog({ open: true, file })
     } else {
       setPendingFile(file)
     }
@@ -64,20 +68,19 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
     await uploadFile(file)
   }
 
+  const handleVideoUploaded = () => {
+    toast.success(isRtl ? "تم رفع الفيديو" : "Video uploaded")
+    fetchMedia()
+  }
+
   const uploadFile = async (file: File) => {
     setUploading(true)
     try {
-      let url: string
-      if (file.type.startsWith("video/")) {
-        url = await directUpload(file)
-      } else {
-        const formData = new FormData()
-        formData.append("file", file)
-        const res = await fetch("/api/upload", { method: "POST", body: formData })
-        const data = await res.json()
-        if (data.error) throw new Error(data.error)
-        url = data.url
-      }
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
       toast.success(isRtl ? "تم الرفع" : "Uploaded")
       fetchMedia()
     } catch (err: any) {
@@ -277,6 +280,14 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
           </div>
         </div>
       )}
+
+      <UploadDialog
+        open={uploadDialog.open}
+        file={uploadDialog.file}
+        isRtl={isRtl}
+        onSuccess={handleVideoUploaded}
+        onClose={() => setUploadDialog({ open: false, file: null })}
+      />
     </div>
   )
 }

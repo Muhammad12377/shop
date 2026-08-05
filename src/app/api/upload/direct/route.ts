@@ -23,27 +23,47 @@ export async function POST(req: NextRequest) {
     const type = typeof body?.type === "string" ? body.type : ""
 
     const check = validateUploadType(type, name)
-    if (!check.ok || check.ext === undefined || check.isVideo === undefined) {
+    if (!check.ok) {
       return NextResponse.json({ error: check.error ?? "Invalid file type" }, { status: 415 })
     }
-
+    if (!check.isVideo) {
+      return NextResponse.json(
+        { error: "Direct upload is reserved for videos" },
+        { status: 400 }
+      )
+    }
     if (size <= 0 || size > maxSizeFor(check.isVideo)) {
-      return NextResponse.json({ error: sizeErrorFor(check.isVideo) }, { status: 413 })
+      return NextResponse.json({ error: sizeErrorFor(check.isVideo, size) }, { status: 413 })
     }
 
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${check.ext}`
-    const { data, error } = await supabase.storage
-      .from("products")
-      .createSignedUploadUrl(fileName)
+    const expiresIn = Math.max(120, Math.min(3600, Math.ceil(size / (256 * 1024)) + 120))
 
-    if (error || !data?.signedUrl) {
+    const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1`
+    const res = await fetch(`${storageBase}/object/upload/sign/products/${fileName}`, {
+      method: "POST",
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ expiresIn, upsert: false }),
+      cache: "no-store",
+    })
+
+    const signData = await res.json().catch(() => null)
+    if (!res.ok || !signData?.url) {
       return NextResponse.json(
-        { error: error?.message ?? "Failed to create upload URL" },
+        { error: signData?.message ?? "Failed to create upload URL" },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ signedUrl: data.signedUrl, path: data.path })
+    return NextResponse.json({
+      signedUrl: `${storageBase}${signData.url}`,
+      path: fileName,
+      contentType: check.type,
+    })
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }

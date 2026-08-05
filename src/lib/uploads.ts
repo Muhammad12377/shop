@@ -1,12 +1,16 @@
-export const ALLOWED_TYPES: Record<string, string[]> = {
-  "image/jpeg": ["jpg", "jpeg"],
-  "image/png": ["png"],
-  "image/webp": ["webp"],
-  "image/avif": ["avif"],
-  "image/gif": ["gif"],
-  "video/mp4": ["mp4"],
-  "video/webm": ["webm"],
-  "video/quicktime": ["mov"],
+export type ExtEntry = { type: string; video: boolean }
+
+export const EXT_TYPES: Record<string, ExtEntry> = {
+  jpg: { type: "image/jpeg", video: false },
+  jpeg: { type: "image/jpeg", video: false },
+  png: { type: "image/png", video: false },
+  webp: { type: "image/webp", video: false },
+  avif: { type: "image/avif", video: false },
+  gif: { type: "image/gif", video: false },
+  mp4: { type: "video/mp4", video: true },
+  m4v: { type: "video/mp4", video: true },
+  webm: { type: "video/webm", video: true },
+  mov: { type: "video/quicktime", video: true },
 }
 
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -15,30 +19,43 @@ export const MAX_VIDEO_SIZE = 50 * 1024 * 1024
 export type UploadTypeCheck = {
   ok: boolean
   ext?: string
+  type?: string
   isVideo?: boolean
   error?: string
+  errorCode?: "type-unsupported"
 }
 
 export function validateUploadType(type: string, name: string): UploadTypeCheck {
-  const t = type.toLowerCase()
   const ext = name.split(".").pop()?.toLowerCase() || ""
-  if (!ALLOWED_TYPES[t] || !ALLOWED_TYPES[t].includes(ext)) {
+  const known = EXT_TYPES[ext]
+  if (!known) {
     return {
       ok: false,
-      error: "Only images (jpg, png, webp, avif, gif) or videos (mp4, webm, mov) are allowed",
+      errorCode: "type-unsupported",
+      error:
+        'Unsupported file format. Allowed images: JPG, PNG, WEBP, AVIF, GIF — videos: MP4, M4V, WEBM, MOV',
     }
   }
-  return { ok: true, ext, isVideo: t.startsWith("video/") }
+
+  const t = type.toLowerCase()
+  if (t && !t.startsWith("image/") && !t.startsWith("video/")) {
+    return {
+      ok: false,
+      errorCode: "type-unsupported",
+      error: `File reports MIME type "${t}" which is not a supported image or video`,
+    }
+  }
+
+  return { ok: true, ext, type: known.type, isVideo: known.video }
 }
 
 export function maxSizeFor(isVideo: boolean): number {
   return isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
 }
 
-export function sizeErrorFor(isVideo: boolean): string {
-  return isVideo
-    ? "File too large, maximum video size is 50MB"
-    : "File too large, maximum image size is 5MB"
+export function sizeErrorFor(isVideo: boolean, size: number): string {
+  const max = maxSizeFor(isVideo)
+  return `File is ${(size / (1024 * 1024)).toFixed(1)}MB, but the maximum is ${Math.round(max / (1024 * 1024))}MB`
 }
 
 export function sniffFileType(bytes: Uint8Array, declaredExt: string): boolean {
@@ -58,7 +75,7 @@ export function sniffFileType(bytes: Uint8Array, declaredExt: string): boolean {
   }
   if (ext === "gif") return ascii("GIF8", 0)
   if (ext === "webp") return ascii("RIFF", 0) && ascii("WEBP", 8)
-  if (ext === "mp4" || ext === "mov" || ext === "avif") {
+  if (ext === "mp4" || ext === "m4v" || ext === "mov" || ext === "avif") {
     const size = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]
     return size >= 8 && ascii("ftyp", 4) && bytes[8] === 0
   }

@@ -6,8 +6,8 @@ import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIc
 import toast from "react-hot-toast"
 import type { Product, ProductCategory, Media } from "@/types"
 import { colorBackground, colorLabel } from "@/lib/colors"
-import { directUpload } from "@/lib/direct-upload"
 import ImageCropModal from "@/components/admin/ImageCropModal"
+import UploadDialog from "@/components/admin/UploadDialog"
 
 const presetColors = [
   "#ffffff", "#000000", "#f5f5f5", "#9ca3af", "#6b7280", "#374151",
@@ -51,6 +51,10 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const [combinePick, setCombinePick] = useState<string[]>([])
   const [imageInput, setImageInput] = useState("")
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
+  const [uploadDialog, setUploadDialog] = useState<{ open: boolean; file: File | null }>({
+    open: false,
+    file: null,
+  })
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
@@ -260,26 +264,15 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     }
   }
 
-  const uploadMedia = async (file: File, isVideo: boolean) => {
+  const uploadMedia = async (file: File) => {
     try {
-      let url: string
-      if (isVideo) {
-        url = await directUpload(file)
-      } else {
-        const fd = new FormData()
-        fd.append("file", file)
-        const res = await fetch("/api/upload", { method: "POST", body: fd })
-        const data = await res.json()
-        if (data.error) throw new Error(data.error)
-        url = data.url
-      }
-      if (isVideo) {
-        setForm({ ...form, video_url: url })
-        toast.success(isRtl ? "تم رفع الفيديو" : "Video uploaded")
-      } else {
-        setForm({ ...form, images: [...(form.images || []), url] })
-        toast.success(isRtl ? "تم رفع الصورة" : "Image uploaded")
-      }
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setForm({ ...form, images: [...(form.images || []), data.url] })
+      toast.success(isRtl ? "تم رفع الصورة" : "Image uploaded")
       fetchMedia()
       return true
     } catch (err: any) {
@@ -297,14 +290,20 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   const handleCropConfirm = async (file: File) => {
     setPendingImageFile(null)
-    await uploadMedia(file, false)
+    await uploadMedia(file)
   }
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    await uploadMedia(file, true)
+    setUploadDialog({ open: true, file })
     if (e.target) e.target.value = ""
+  }
+
+  const handleVideoUploaded = (url: string) => {
+    setForm((prev) => ({ ...prev, video_url: url }))
+    toast.success(isRtl ? "تم رفع الفيديو" : "Video uploaded")
+    fetchMedia()
   }
 
   if (loading) {
@@ -1046,6 +1045,14 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
           onConfirm={handleCropConfirm}
         />
       )}
+
+      <UploadDialog
+        open={uploadDialog.open}
+        file={uploadDialog.file}
+        isRtl={isRtl}
+        onSuccess={handleVideoUploaded}
+        onClose={() => setUploadDialog({ open: false, file: null })}
+      />
 
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

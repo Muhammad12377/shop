@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (file.size > maxSizeFor(check.isVideo)) {
-      return NextResponse.json({ error: sizeErrorFor(check.isVideo) }, { status: 413 })
+      return NextResponse.json({ error: sizeErrorFor(check.isVideo, file.size) }, { status: 413 })
     }
 
     const head = new Uint8Array(await file.slice(0, 64).arrayBuffer())
