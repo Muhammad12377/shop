@@ -55,7 +55,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     open: false,
     file: null,
   })
-  const [videoError, setVideoError] = useState(false)
+  const [videoError, setVideoError] = useState<null | "network" | "decode">(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
@@ -107,7 +107,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   }, [fetchProducts, fetchCategories, fetchMedia])
 
   useEffect(() => {
-    setVideoError(false)
+    setVideoError(null)
   }, [form.video_url])
 
   const filtered = products.filter((p) => {
@@ -119,7 +119,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const openAdd = () => {
     setEditing(null)
     setForm({ ...defaultProduct, size_stock: {}, category_ids: [] })
-    setVideoError(false)
+    setVideoError(null)
     setModalOpen(true)
   }
 
@@ -130,7 +130,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
       if (!(s in sizeStock)) sizeStock[s] = 0
     }
     setForm({ ...product, size_stock: sizeStock, category_ids: (product as any).category_ids || [] })
-    setVideoError(false)
+    setVideoError(null)
     setModalOpen(true)
   }
 
@@ -309,7 +309,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   const handleVideoUploaded = (url: string) => {
     setForm((prev) => ({ ...prev, video_url: url }))
-    setVideoError(false)
+    setVideoError(null)
     toast.success(isRtl ? "تم رفع الفيديو" : "Video uploaded")
     fetchMedia()
   }
@@ -887,8 +887,11 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                       controls
                       playsInline
                       preload="metadata"
-                      onCanPlay={() => setVideoError(false)}
-                      onError={() => setVideoError(true)}
+                      onCanPlay={() => setVideoError(null)}
+                      onError={(e) => {
+                        const code = (e.currentTarget as HTMLVideoElement).error?.code
+                        setVideoError(code === 2 ? "network" : "decode")
+                      }}
                       className="w-full max-h-48 rounded-xl border border-zinc-200 bg-zinc-900"
                     />
                     {videoError && (
@@ -900,15 +903,19 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                             : "This video couldn't play in the browser."}
                         </p>
                         <p className="mt-1 pl-5 text-red-500/80">
-                          {isRtl
-                            ? "السبب الأكثر شيوعاً: الفيديو مقيّد بصيغة HEVC/H.265 (مثل تسجيلات الآيفون الحديثة) التي لا يدعمها معظم المتصفحات. أعد تصديره كـ H.264 MP4 أو WEBM وحاول مجدداً، أو استخدم رابطاً صحيحاً مباشراً للملف."
-                            : "Most common cause: the file uses HEVC/H.265 encoding (e.g. newer iPhone recordings), which most browsers can't play. Re-export as H.264 MP4 or WEBM and retry, or use a direct working file URL."}
+                          {videoError === "network"
+                            ? isRtl
+                              ? "يبدو أن المشكلة في الشبكة أو الرابط نفسه (تعذّر تحميل ملف الفيديو). تأكد من أن الرابط يعمل ويمكن الوصول إليه مباشرة من المتصفح."
+                              : "This looks like a network or link problem (the video file failed to load). Make sure the URL is reachable and directly accessible in the browser."
+                            : isRtl
+                              ? "السبب الأكثر شيوعاً: الفيديو مقيّد بصيغة HEVC/H.265 (مثل تسجيلات الآيفون الحديثة) التي لا يدعمها معظم المتصفحات، أو أن الترميز/الوعاء غير متوافق مع البث. أعد تصديره كـ H.264 MP4 أو WEBM وحاول مجدداً."
+                              : "Most common cause: the file uses HEVC/H.265 encoding (e.g. newer iPhone recordings), which most browsers can't play, or the codec/container is not compatible with streaming. Re-export as H.264 MP4 or WEBM and retry."}
                         </p>
                       </div>
                     )}
                     <button
                       type="button"
-                      onClick={() => { setForm({ ...form, video_url: "" }); setVideoError(false) }}
+                      onClick={() => { setForm({ ...form, video_url: "" }); setVideoError(null) }}
                       className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 cursor-pointer"
                       title={isRtl ? "إزالة الفيديو" : "Remove video"}
                     >

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createServerSupabase } from "@/lib/supabase/server"
 import { rateLimit, getClientIp } from "@/lib/rate-limit"
+import { EXT_TYPES } from "@/lib/uploads"
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,6 +25,36 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: urlData } = supabase.storage.from("products").getPublicUrl(path)
+
+    const ext = path.split(".").pop()?.toLowerCase() || ""
+    const known = EXT_TYPES[ext]
+    if (known) {
+      const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1`
+      const metaRes = await fetch(
+        `${storageBase}/object/update/products/${path}`,
+        {
+          method: "PUT",
+          headers: {
+            apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            updates: {
+              contentType: known.type,
+              cacheControl: "3600",
+            },
+          }),
+          cache: "no-store",
+        }
+      )
+      if (!metaRes.ok) {
+        return NextResponse.json(
+          { error: `Failed to set content type (${metaRes.status})` },
+          { status: 500 }
+        )
+      }
+    }
 
     const { data: mediaRecord, error: dbError } = await supabase
       .from("media")
