@@ -187,10 +187,12 @@ export default function ProductView({ product, siblings }: { product: any; sibli
                   </div>
                 ) : (
                   <video
+                    key={product.video_url}
                     src={product.video_url}
                     poster={product.images?.[0] || undefined}
                     controls
                     playsInline
+                    onCanPlay={() => setVideoFailed(false)}
                     onError={() => setVideoFailed(true)}
                     className="absolute inset-0 w-full h-full object-contain"
                   />

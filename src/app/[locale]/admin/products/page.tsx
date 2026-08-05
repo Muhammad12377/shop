@@ -106,6 +106,10 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     Promise.all([fetchProducts(), fetchCategories(), fetchMedia()]).finally(() => setLoading(false))
   }, [fetchProducts, fetchCategories, fetchMedia])
 
+  useEffect(() => {
+    setVideoError(false)
+  }, [form.video_url])
+
   const filtered = products.filter((p) => {
     if (!search) return true
     const s = search.toLowerCase()
@@ -115,6 +119,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
   const openAdd = () => {
     setEditing(null)
     setForm({ ...defaultProduct, size_stock: {}, category_ids: [] })
+    setVideoError(false)
     setModalOpen(true)
   }
 
@@ -125,6 +130,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
       if (!(s in sizeStock)) sizeStock[s] = 0
     }
     setForm({ ...product, size_stock: sizeStock, category_ids: (product as any).category_ids || [] })
+    setVideoError(false)
     setModalOpen(true)
   }
 
@@ -303,6 +309,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
 
   const handleVideoUploaded = (url: string) => {
     setForm((prev) => ({ ...prev, video_url: url }))
+    setVideoError(false)
     toast.success(isRtl ? "تم رفع الفيديو" : "Video uploaded")
     fetchMedia()
   }
@@ -875,17 +882,28 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                 {form.video_url && (
                   <div className="relative mb-2">
                     <video
+                      key={form.video_url}
                       src={form.video_url}
                       controls
+                      playsInline
+                      preload="metadata"
+                      onCanPlay={() => setVideoError(false)}
                       onError={() => setVideoError(true)}
                       className="w-full max-h-48 rounded-xl border border-zinc-200 bg-zinc-900"
                     />
                     {videoError && (
-                      <div className="mt-1 flex items-center gap-2 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        {isRtl
-                          ? "تعذّر تشغيل هذا الفيديو — تأكد أن الملف سليم (MP4/WEBM/MOV)"
-                          : "Couldn't play this video — make sure the file is valid (MP4/WEBM/MOV)"}
+                      <div className="mt-1 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+                        <p className="flex items-center gap-2 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          {isRtl
+                            ? "تعذّر تشغيل هذا الفيديو في المتصفح."
+                            : "This video couldn't play in the browser."}
+                        </p>
+                        <p className="mt-1 pl-5 text-red-500/80">
+                          {isRtl
+                            ? "السبب الأكثر شيوعاً: الفيديو مقيّد بصيغة HEVC/H.265 (مثل تسجيلات الآيفون الحديثة) التي لا يدعمها معظم المتصفحات. أعد تصديره كـ H.264 MP4 أو WEBM وحاول مجدداً، أو استخدم رابطاً صحيحاً مباشراً للملف."
+                            : "Most common cause: the file uses HEVC/H.265 encoding (e.g. newer iPhone recordings), which most browsers can't play. Re-export as H.264 MP4 or WEBM and retry, or use a direct working file URL."}
+                        </p>
                       </div>
                     )}
                     <button
