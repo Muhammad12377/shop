@@ -10,7 +10,7 @@ import { useCartStore } from "@/stores/cart"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { ShoppingCart, Heart, Check, Package, Truck, Shield, Play } from "lucide-react"
+import { ShoppingCart, Heart, Check, Package, Truck, Shield, Play, AlertTriangle } from "lucide-react"
 import { colorBackground, colorLabel } from "@/lib/colors"
 import ProductCard from "@/components/products/ProductCard"
 import { groupBySku } from "@/lib/group-products"
@@ -28,6 +28,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
   const [selectedSize, setSelectedSize] = useState(initialSize)
   const [selectedImage, setSelectedImage] = useState(0)
   const [showVideo, setShowVideo] = useState(false)
+  const [videoFailed, setVideoFailed] = useState(false)
   const [inWishlist, setInWishlist] = useState(false)
   const addItem = useCartStore((s) => s.addItem)
   const cartQty = useCartStore((s) =>
@@ -175,12 +176,25 @@ export default function ProductView({ product, siblings }: { product: any; sibli
           <div className="min-w-0">
             <div className="aspect-square rounded-2xl bg-zinc-100 overflow-hidden mb-3 relative">
               {showVideo && product.video_url ? (
-                <video
-                  src={product.video_url}
-                  poster={product.images?.[0] || undefined}
-                  controls
-                  className="absolute inset-0 w-full h-full object-contain"
-                />
+                videoFailed ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-100 text-center px-6">
+                    <AlertTriangle className="w-12 h-12 text-zinc-300" />
+                    <p className="text-sm text-zinc-500">
+                      {isRtl
+                        ? "تعذّر تشغيل الفيديو على متصفحك"
+                        : "Video could not be played on this browser"}
+                    </p>
+                  </div>
+                ) : (
+                  <video
+                    src={product.video_url}
+                    poster={product.images?.[0] || undefined}
+                    controls
+                    playsInline
+                    onError={() => setVideoFailed(true)}
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                )
               ) : product.images?.[selectedImage] ? (
                 <Image
                   src={product.images[selectedImage]}
@@ -200,7 +214,7 @@ export default function ProductView({ product, siblings }: { product: any; sibli
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {product.video_url && (
                   <button
-                    onClick={() => { setShowVideo(true); setSelectedImage(0) }}
+                    onClick={() => { setShowVideo(true); setSelectedImage(0); setVideoFailed(false) }}
                     className={`w-16 h-16 rounded-xl shrink-0 overflow-hidden border-2 transition-colors relative bg-zinc-900 flex items-center justify-center ${
                       showVideo ? "border-accent" : "border-transparent"
                     }`}

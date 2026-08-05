@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react"
 import Image from "next/image"
-import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon, Layers } from "lucide-react"
+import { Plus, Pencil, Trash2, Star, X, Search, Check, Loader2, Image as ImageIcon, Upload, FileIcon, Layers, AlertTriangle } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Product, ProductCategory, Media } from "@/types"
 import { colorBackground, colorLabel } from "@/lib/colors"
@@ -55,6 +55,7 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     open: false,
     file: null,
   })
+  const [videoError, setVideoError] = useState(false)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
   const isRtl = locale === "ar"
@@ -876,11 +877,20 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
                     <video
                       src={form.video_url}
                       controls
+                      onError={() => setVideoError(true)}
                       className="w-full max-h-48 rounded-xl border border-zinc-200 bg-zinc-900"
                     />
+                    {videoError && (
+                      <div className="mt-1 flex items-center gap-2 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        {isRtl
+                          ? "تعذّر تشغيل هذا الفيديو — تأكد أن الملف سليم (MP4/WEBM/MOV)"
+                          : "Couldn't play this video — make sure the file is valid (MP4/WEBM/MOV)"}
+                      </div>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, video_url: "" })}
+                      onClick={() => { setForm({ ...form, video_url: "" }); setVideoError(false) }}
                       className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 cursor-pointer"
                       title={isRtl ? "إزالة الفيديو" : "Remove video"}
                     >

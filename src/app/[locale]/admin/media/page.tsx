@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import Image from "next/image"
-import { Upload, Trash2, Copy, Check, FileIcon, Loader2 } from "lucide-react"
+import { Upload, Trash2, Copy, Check, FileIcon, Loader2, Play, X, Video as VideoIcon, AlertTriangle } from "lucide-react"
 import toast from "react-hot-toast"
 import type { Media } from "@/types"
 import ImageCropModal from "@/components/admin/ImageCropModal"
@@ -21,6 +21,8 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
     open: false,
     file: null,
   })
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [failedVideos, setFailedVideos] = useState<Record<string, boolean>>({})
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { paramsPromise.then((p) => setLocale(p.locale)) }, [paramsPromise])
@@ -118,6 +120,8 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
   }
 
   const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(url)
+  const isVideo = (url: string) => /\.(mp4|m4v|webm|mov)(\?.*)?$/i.test(url)
+  const fileName = (url: string) => url.split("/").pop() || ""
 
   if (loading) {
     return (
@@ -214,6 +218,44 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
                     loading="lazy"
                   />
                 </div>
+              ) : isVideo(item.url) ? (
+                <button
+                  type="button"
+                  onClick={() => setPreviewUrl(item.url)}
+                  className="relative w-full aspect-square bg-zinc-900 block group cursor-pointer overflow-hidden"
+                  title={isRtl ? "تشغيل الفيديو" : "Play video"}
+                >
+                  <video
+                    src={`${item.url}#t=0.5`}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="absolute inset-0 w-full h-full object-contain"
+                    onError={() => setFailedVideos((f) => ({ ...f, [item.url]: true }))}
+                  />
+                  {failedVideos[item.url] ? (
+                    <span className="absolute inset-0 flex items-center justify-center bg-zinc-900/95">
+                      <span className="flex flex-col items-center gap-2 text-center px-3">
+                        <AlertTriangle className="w-8 h-8 text-red-400" />
+                        <span className="text-[11px] text-zinc-300">
+                          {isRtl ? "تعذّر تحميل هذا الفيديو" : "Failed to load this video"}
+                        </span>
+                      </span>
+                    </span>
+                  ) : (
+                    <>
+                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="w-12 h-12 rounded-full bg-black/55 flex items-center justify-center group-hover:bg-[#f97316]/85 transition-colors">
+                          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                        </span>
+                      </span>
+                      <span className="absolute top-2 start-2 bg-black/60 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 pointer-events-none">
+                        <VideoIcon className="w-3 h-3" />
+                        VIDEO
+                      </span>
+                    </>
+                  )}
+                </button>
               ) : (
                 <div className="w-full aspect-square flex items-center justify-center bg-zinc-50">
                   <FileIcon className="w-10 h-10 text-zinc-300" />
@@ -236,7 +278,7 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
                 </button>
               </div>
               <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/40 to-transparent p-2">
-                <p className="text-[10px] text-white truncate">{item.url.split("/").pop()}</p>
+                <p className="text-[10px] text-white truncate">{fileName(item.url)}</p>
               </div>
             </div>
           ))}
@@ -277,6 +319,28 @@ export default function AdminMediaPage({ params: paramsPromise }: { params: Prom
                 {isRtl ? "حذف" : "Delete"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80" onClick={() => setPreviewUrl(null)} />
+          <div className="relative bg-black rounded-xl overflow-hidden max-w-4xl w-full z-10">
+            <video
+              src={previewUrl}
+              controls
+              autoPlay
+              playsInline
+              className="w-full max-h-[80vh] object-contain"
+            />
+            <button
+              onClick={() => setPreviewUrl(null)}
+              className="absolute top-3 end-3 p-2 bg-black/60 text-white rounded-full hover:bg-black/80 cursor-pointer"
+              title={isRtl ? "إغلاق" : "Close"}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
       )}
