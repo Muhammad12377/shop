@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { Link } from "@/lib/i18n/navigation"
 import toast from "react-hot-toast"
+import { fetchCached } from "@/lib/fetch-cache"
 import { Star } from "lucide-react"
 
 export default function Reviews({ productId }: { productId: string }) {
@@ -24,8 +25,7 @@ export default function Reviews({ productId }: { productId: string }) {
 
   const loadReviews = useCallback(async () => {
     try {
-      const res = await fetch(`/api/reviews?product_id=${productId}`)
-      const json = await res.json()
+      const json = await fetchCached<{ success: boolean; data?: any[] }>(`/api/reviews?product_id=${productId}`, 60_000)
       if (json.success) setReviews(json.data || [])
     } catch {}
     setLoading(false)

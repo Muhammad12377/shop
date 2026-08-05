@@ -5,6 +5,7 @@ import { useLocale } from "next-intl"
 import Image from "next/image"
 import { Menu, X, ChevronLeft, ChevronRight, Layers } from "lucide-react"
 import { Link, useRouter } from "@/lib/i18n/navigation"
+import { fetchCached } from "@/lib/fetch-cache"
 import type { ProductCategory } from "@/types"
 
 const colorMap: Record<string, string> = {
@@ -25,11 +26,8 @@ export default function CategoryMenu() {
   const [categories, setCategories] = useState<ProductCategory[]>([])
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setCategories(data)
-      })
+    fetchCached<ProductCategory[]>("/api/categories")
+      .then(setCategories)
       .catch(() => {})
   }, [])
 

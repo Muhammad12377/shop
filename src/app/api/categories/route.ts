@@ -19,5 +19,9 @@ export async function GET() {
     .eq("active", true)
     .order("sort_order")
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data || [])
+  return NextResponse.json(data || [], {
+    headers: {
+      "Cache-Control": "public, max-age=300, s-maxage=600, stale-while-revalidate=86400",
+    },
+  })
 }

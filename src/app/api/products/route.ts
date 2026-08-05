@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.json({ success: true, data } satisfies ApiResponse, {
     headers: {
-      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=31536000",
+      "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=31536000",
     },
   })
   return response

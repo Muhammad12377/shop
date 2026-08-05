@@ -29,7 +29,11 @@ export async function GET() {
       for (const c of countries) c.zones = zonesByCountry[c.id] || []
     }
 
-    return NextResponse.json(countries || [])
+    return NextResponse.json(countries || [], {
+      headers: {
+        "Cache-Control": "public, max-age=300, s-maxage=600, stale-while-revalidate=86400",
+      },
+    })
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }

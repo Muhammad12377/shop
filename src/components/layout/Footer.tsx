@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from "next-intl"
 import { useEffect, useState } from "react"
 import { Link } from "@/lib/i18n/navigation"
 import { Globe, Mail, MapPin } from "lucide-react"
+import { fetchCached } from "@/lib/fetch-cache"
 import type { ProductCategory } from "@/types"
 
 export default function Footer({ locale }: { locale: string }) {
@@ -14,11 +15,8 @@ export default function Footer({ locale }: { locale: string }) {
   const [sections, setSections] = useState<ProductCategory[]>([])
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setSections(data.filter((c: any) => !c.parent_id))
-      })
+    fetchCached<ProductCategory[]>("/api/categories")
+      .then((data) => setSections(data.filter((c) => !c.parent_id)))
       .catch(() => {})
   }, [])
 

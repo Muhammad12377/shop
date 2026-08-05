@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
 
   if (error) return NextResponse.json({ success: false, error: error.message } satisfies ApiResponse, { status: 500 })
-  return NextResponse.json({ success: true, data } satisfies ApiResponse)
+  return NextResponse.json({ success: true, data } satisfies ApiResponse, {
+    headers: {
+      "Cache-Control": "public, max-age=60, s-maxage=300",
+    },
+  })
 }
 
 export async function POST(request: NextRequest) {
