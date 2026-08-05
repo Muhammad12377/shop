@@ -6,7 +6,6 @@ import Image from "next/image"
 import { useRouter } from "@/lib/i18n/navigation"
 import { useCartStore } from "@/stores/cart"
 import { createClient } from "@/lib/supabase/client"
-import { fetchCached } from "@/lib/fetch-cache"
 import toast from "react-hot-toast"
 import Header from "@/components/layout/Header"
 import { CreditCard, MapPin, Phone, User, FileText, Ticket, Plus, X, ChevronDown } from "lucide-react"
@@ -76,12 +75,15 @@ export default function CheckoutPage() {
         for (const row of data || []) s[row.key] = row.value
         setSettings(s)
       })
-    fetchCached<any[]>("/api/shipping")
+    fetch("/api/shipping")
+      .then((r) => r.json())
       .then((data) => {
-        setShippingCountries(data)
-        if (data.length === 1) {
-          setSelectedCountryId(data[0].id)
-          if (data[0].zones?.length === 1) setSelectedZoneId(data[0].zones[0].id)
+        if (Array.isArray(data)) {
+          setShippingCountries(data)
+          if (data.length === 1) {
+            setSelectedCountryId(data[0].id)
+            if (data[0].zones?.length === 1) setSelectedZoneId(data[0].zones[0].id)
+          }
         }
       })
       .catch(() => {})
