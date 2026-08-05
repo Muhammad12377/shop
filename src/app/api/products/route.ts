@@ -46,7 +46,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
-    query = query.or(`name_en.ilike.%${search}%,name_ar.ilike.%${search}%`)
+    const safe = search.replace(/[%,_(),'"*\\\\.]/g, "").trim()
+    if (safe) {
+      query = query.or(`name_en.ilike.%${safe}%,name_ar.ilike.%${safe}%`)
+    }
   }
 
   if (featured === "true") {

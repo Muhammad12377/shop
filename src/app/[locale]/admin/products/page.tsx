@@ -134,7 +134,10 @@ export default function AdminProductsPage({ params: paramsPromise }: { params: P
     setModalOpen(true)
   }
 
-  const totalStock = Object.values(form.size_stock || {}).reduce((a, b) => a + b, 0)
+  const sizeStock = form.size_stock || {}
+  const totalStock = Object.keys(sizeStock).length > 0
+    ? Object.values(sizeStock).reduce((a, b) => a + b, 0)
+    : (form.stock ?? 0)
 
   const handleSave = async () => {
     setSaving(true)

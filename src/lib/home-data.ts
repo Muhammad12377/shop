@@ -78,12 +78,14 @@ export const getCachedSiblingProducts = unstable_cache(
   async (id: string, nameEn: string, nameAr: string) => {
     const name = nameEn || nameAr
     if (!name) return []
+    const safe = name.replace(/[%,_(),'"*\\\\.]/g, "").trim()
+    if (!safe) return []
     const { data } = await client
       .from("products")
       .select("id, name_en, name_ar, colors, images, slug")
       .eq("active", true)
       .neq("id", id)
-      .or(`name_en.eq.${name.replace(/'/g, "")},name_ar.eq.${name.replace(/'/g, "")}`)
+      .or(`name_en.eq.${safe},name_ar.eq.${safe}`)
     return data || []
   },
   ["product-siblings"],

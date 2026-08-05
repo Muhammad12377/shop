@@ -29,7 +29,7 @@ export async function rateLimit(
   })
 
   if (error) {
-    return { allowed: true, remaining: maxRequests, retryAfter: 0 }
+    return { allowed: false, remaining: 0, retryAfter: windowSeconds }
   }
 
   const count = Number(data ?? 0)

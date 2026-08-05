@@ -77,7 +77,7 @@ export function sniffFileType(bytes: Uint8Array, declaredExt: string): boolean {
   if (ext === "webp") return ascii("RIFF", 0) && ascii("WEBP", 8)
   if (ext === "mp4" || ext === "m4v" || ext === "mov" || ext === "avif") {
     const size = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]
-    return size >= 8 && ascii("ftyp", 4) && bytes[8] === 0
+    return size >= 8 && ascii("ftyp", 4)
   }
   if (ext === "webm") return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3
   return true
