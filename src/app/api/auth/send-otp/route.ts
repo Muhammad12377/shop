@@ -22,6 +22,26 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (name.length > 80) {
+      return NextResponse.json({ ok: false, error: "Name is too long" }, { status: 400 })
+    }
+
+    const captcha = await verifyTurnstileToken(captchaToken)
+    if (!captcha.ok) {
+      return NextResponse.json({ ok: false, error: "captcha_failed", code: captcha.error }, { status: 400 })
+    }
+
+    const ip = getClientIp(req)
+    const ipLimited = await rateLimit(ip, `auth-send-otp-${mode}`, 5, 60)
+    if (!ipLimited.allowed) {
+      return NextResponse.json({ ok: false, error: "Too many requests, try again later" }, { status: 429 })
+    }
+
+    const emailLimited = await rateLimit(email, "auth-send-otp-email", 5, 300)
+    if (!emailLimited.allowed) {
+      return NextResponse.json({ ok: false, error: "Too many requests, try again later" }, { status: 429 })
+    }
+
     if (mode === "register") {
       if (!name) {
         return NextResponse.json({ ok: false, error: "Name is required" }, { status: 400 })
@@ -39,16 +59,6 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       }
-    }
-
-    const captcha = await verifyTurnstileToken(captchaToken)
-    if (!captcha.ok) {
-      return NextResponse.json({ ok: false, error: "captcha_failed", code: captcha.error }, { status: 400 })
-    }
-
-    const limited = await rateLimit(getClientIp(req), `auth-send-otp-${mode}`, 5, 60)
-    if (!limited.allowed) {
-      return NextResponse.json({ ok: false, error: "Too many requests, try again later" }, { status: 429 })
     }
 
     const supabase = await createServerSupabase()

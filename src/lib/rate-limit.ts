@@ -10,8 +10,13 @@ export function getClientIp(req: Request): string {
   if ("ip" in req && typeof (req as { ip?: string }).ip === "string" && (req as { ip?: string }).ip) {
     return (req as { ip?: string }).ip as string
   }
+  const xReal = req.headers.get("x-real-ip")?.trim()
+  if (xReal) return xReal
+  const xVercel = req.headers.get("x-vercel-forwarded-for")?.trim()
+  if (xVercel) return xVercel
   const fwd = req.headers.get("x-forwarded-for") || ""
-  return fwd.split(",")[0]?.trim() || "unknown"
+  const entries = fwd.split(",").map((s) => s.trim()).filter(Boolean)
+  return entries[entries.length - 1] || "unknown"
 }
 
 export async function rateLimit(

@@ -40,6 +40,21 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: false, error: "No valid fields to update" } satisfies ApiResponse, { status: 400 })
   }
 
+  const maxLen: Record<string, number> = { full_name: 80, phone: 30, address: 500, city: 120 }
+  for (const key of Object.keys(maxLen)) {
+    if (allowedFields[key] !== undefined && typeof allowedFields[key] === "string" && allowedFields[key].length > maxLen[key]) {
+      return NextResponse.json({ success: false, error: `${key} is too long` } satisfies ApiResponse, { status: 400 })
+    }
+  }
+
+  if (allowedFields.avatar_url !== undefined) {
+    const avatar = typeof allowedFields.avatar_url === "string" ? allowedFields.avatar_url.trim() : ""
+    if (avatar && !/^https?:\/\//i.test(avatar)) {
+      return NextResponse.json({ success: false, error: "avatar_url must be a valid http(s) URL" } satisfies ApiResponse, { status: 400 })
+    }
+    allowedFields.avatar_url = avatar
+  }
+
   if (typeof allowedFields.full_name === "string" && allowedFields.full_name.trim()) {
     const name = allowedFields.full_name.trim()
     const escaped = name.replace(/[\\%_]/g, (m) => `\\${m}`)

@@ -1,9 +1,10 @@
 -- ============================================================
 -- Fixes 2026-08-06
 --   1. rate_limits table + consume_rate_limit RPC (used by src/lib/rate-limit.ts).
---      Previously undefined in migrations; rate limiting silently failed open.
+--      The table already existed in production (key/window_start/count); this
+--      migration redefines the function with row-locking to fix a
+--      read-then-write race that could bypass the limit under concurrency.
 --   2. validate_coupon RPC (used by /api/coupons/validate).
---      Previously undefined in migrations.
 --   3. create_order: enforce that the chosen shipping zone belongs to the
 --      chosen country (prevents shipping-price manipulation).
 -- ============================================================
@@ -11,8 +12,8 @@
 -- ---------- 1. Rate limiting ----------
 CREATE TABLE IF NOT EXISTS public.rate_limits (
   key text PRIMARY KEY,
-  count int NOT NULL DEFAULT 0,
-  reset_at timestamptz NOT NULL
+  window_start timestamptz NOT NULL,
+  count int NOT NULL DEFAULT 0
 );
 
 CREATE OR REPLACE FUNCTION public.consume_rate_limit(
@@ -25,21 +26,21 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_now timestamptz := now();
   v_row public.rate_limits%ROWTYPE;
 BEGIN
   SELECT * INTO v_row FROM public.rate_limits WHERE key = p_key FOR UPDATE;
 
-  IF NOT FOUND OR v_row.reset_at <= v_now THEN
-    INSERT INTO public.rate_limits (key, count, reset_at)
-    VALUES (p_key, 1, v_now + make_interval(secs => p_window))
+  IF NOT FOUND OR v_row.window_start < now() - make_interval(secs => p_window) THEN
+    INSERT INTO public.rate_limits (key, window_start, count)
+    VALUES (p_key, now(), 1)
     ON CONFLICT (key) DO UPDATE
-      SET count = 1, reset_at = v_now + make_interval(secs => p_window);
+      SET window_start = now(), count = 1;
     RETURN 1;
   END IF;
 
-  UPDATE public.rate_limits SET count = count + 1 WHERE key = p_key;
-  RETURN v_row.count + 1;
+  v_row.count := v_row.count + 1;
+  UPDATE public.rate_limits SET count = v_row.count WHERE key = p_key;
+  RETURN v_row.count;
 END;
 $$;
 

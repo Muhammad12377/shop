@@ -15,6 +15,33 @@ async function uniqueSlug(supabase: any, base: string, excludeId?: string) {
   }
 }
 
+const PRODUCT_FIELDS = [
+  "name_en",
+  "name_ar",
+  "description_en",
+  "description_ar",
+  "price",
+  "compare_price",
+  "category_id",
+  "stock",
+  "images",
+  "sizes",
+  "colors",
+  "featured",
+  "active",
+  "size_stock",
+  "video_url",
+  "slug",
+] as const
+
+function pickProductFields(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const f of PRODUCT_FIELDS) {
+    if (body[f] !== undefined) out[f] = body[f]
+  }
+  return out
+}
+
 export async function GET() {
   try {
     const { supabase } = await requireAdmin()
@@ -39,7 +66,10 @@ export async function POST(req: Request) {
   try {
     const { supabase } = await requireAdmin()
     const { category: _category, category_ids: categoryIds, ...rest } = await req.json()
-    const body: any = { ...rest }
+    const body: any = pickProductFields(rest)
+    if (!body.name_en || !body.name_ar) {
+      return NextResponse.json({ error: "name_en and name_ar are required" }, { status: 400 })
+    }
     if (body.price != null) body.price = Math.round(Math.max(0, Number(body.price)) * 100) / 100
     if (body.compare_price != null) body.compare_price = Math.round(Math.max(0, Number(body.compare_price)) * 100) / 100
     const baseSlug = body.name_en?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `product-${Date.now()}`

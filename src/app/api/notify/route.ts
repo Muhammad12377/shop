@@ -44,8 +44,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    if (body?.type === "new_user" && body.email) {
-      await notifyAdmin({ type: "new_user", email: body.email, name: body.name || null })
+    if (body?.type === "new_user") {
+      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
+      if (!email || !user.email || email !== user.email.toLowerCase()) {
+        return NextResponse.json({ success: false, error: "Unsupported event" }, { status: 400 })
+      }
+      const name = typeof body.name === "string" && body.name.trim().length <= 80 ? body.name.trim() : null
+      await notifyAdmin({ type: "new_user", email, name })
       return NextResponse.json({ success: true })
     }
 

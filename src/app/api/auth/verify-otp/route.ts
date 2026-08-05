@@ -24,12 +24,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (name.length > 80) {
+      return NextResponse.json({ ok: false, error: "Name is too long" }, { status: 400 })
+    }
+
     const captcha = await verifyTurnstileToken(captchaToken)
     if (!captcha.ok) {
       return NextResponse.json({ ok: false, error: "captcha_failed", code: captcha.error }, { status: 400 })
     }
 
-    const limited = await rateLimit(getClientIp(req), "auth-verify-otp", 10, 60)
+    const limited = await rateLimit(`${email}|${getClientIp(req)}`, "auth-verify-otp", 10, 60)
     if (!limited.allowed) {
       return NextResponse.json({ ok: false, error: "Too many attempts, try again later" }, { status: 429 })
     }

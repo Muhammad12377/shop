@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server"
 import { requireAdmin, AdminAuthError } from "@/lib/admin-auth"
 
+const COUPON_FIELDS = ["code", "discount_type", "discount_value", "min_order", "max_uses", "expires_at", "active"] as const
+
+function pickCouponFields(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const f of COUPON_FIELDS) {
+    if (body[f] !== undefined) out[f] = body[f]
+  }
+  if (out.expires_at === "") out.expires_at = null
+  return out
+}
+
 export async function GET() {
   try {
     const { supabase } = await requireAdmin()
@@ -19,7 +30,10 @@ export async function POST(req: Request) {
     const { supabase } = await requireAdmin()
 
     const body = await req.json()
-    const { data, error } = await supabase.from("coupons").insert(body).select().single()
+    if (!body?.code) {
+      return NextResponse.json({ error: "code is required" }, { status: 400 })
+    }
+    const { data, error } = await supabase.from("coupons").insert(pickCouponFields(body)).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
   } catch (e) {

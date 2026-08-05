@@ -67,6 +67,7 @@ export const getCachedProduct = unstable_cache(
       .from("products")
       .select("*, category:categories!products_category_id_fkey(*)")
       .eq("id", id)
+      .eq("active", true)
       .single()
     return data
   },
